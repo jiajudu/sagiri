@@ -1,3 +1,3 @@
 #pragma once
-#include "lib/ctype.h"
+#include "lib/stdint.h"
 void consoleput(int64_t c);

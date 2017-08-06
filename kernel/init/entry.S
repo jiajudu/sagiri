@@ -1,7 +1,7 @@
 .text
 .globl _start
 _start:
-# 把bss段清零
+    # 把bss段清零
     movabs $edata, %rdi
     movabs $end, %rcx
 loop:

@@ -1,5 +1,5 @@
 #pragma once
-#include "ctype.h"
+#include "lib/stdint.h"
 // Routines to let C code use special x86 instructions.
 static inline uint8_t inb(uint16_t port) {
     uint8_t data;

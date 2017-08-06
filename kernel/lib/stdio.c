@@ -1,5 +1,5 @@
 #include "dev/console.h"
-#include "lib/ctype.h"
+#include "lib/stdint.h"
 #include "lib/stdio.h"
 static void printnum(uint64_t num, uint64_t base){
     char digits[17] = "0123456789abcedf";

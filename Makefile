@@ -1,4 +1,4 @@
-OBJS := kobj/main.o kobj/entry.o kobj/stdio.o kobj/console.o kobj/uart.o
+OBJS := kobj/main.o kobj/entry.o kobj/stdio.o kobj/console.o kobj/uart.o kobj/pmm.o
 QEMU = qemu-system-x86_64
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -Wall -MD -ggdb -fno-omit-frame-pointer -ffreestanding -fno-common -nostdlib -gdwarf-2 -m64 -DX64 -mcmodel=large -mtls-direct-seg-refs -mno-red-zone -fno-stack-protector -Ikernel/
 LDFLAGS = -m elf_x86_64 -nodefaultlibs
@@ -38,7 +38,7 @@ clean:
 ifndef CPUS
 CPUS := 2
 endif
-QEMUOPTS = -net none kernel.img -smp $(CPUS) -m 512 $(QEMUEXTRA)
+QEMUOPTS = -net none kernel.img -smp $(CPUS) -m 1024 $(QEMUEXTRA)
 qemu: kernel.img
 	$(QEMU) -serial mon:stdio -nographic $(QEMUOPTS)
 debug: kernel.img
