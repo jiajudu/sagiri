@@ -53,19 +53,19 @@ struct proghdr {
 //读取扇区secno到地址dst处
 static void readsect(uint32_t dst, uint32_t secno) {
     //等待磁盘就绪
-    while((inb(0x1F7) & 0xC0) != 0x40);
+    while((inb(0x1f7) & 0xc0) != 0x40);
     //读取一个扇区
-    outb(0x1F2, 1);
-    outb(0x1F3, secno & 0xFF);
-    outb(0x1F4, (secno >> 8) & 0xFF);
-    outb(0x1F5, (secno >> 16) & 0xFF);
-    outb(0x1F6, ((secno >> 24) & 0xF) | 0xE0);
+    outb(0x1f2, 1);
+    outb(0x1f3, secno & 0xff);
+    outb(0x1f4, (secno >> 8) & 0xff);
+    outb(0x1f5, (secno >> 16) & 0xff);
+    outb(0x1f6, ((secno >> 24) & 0xf) | 0xe0);
     //发出读扇区命令
-    outb(0x1F7, 0x20);
+    outb(0x1f7, 0x20);
     //等待磁盘就绪
-    while((inb(0x1F7) & 0xC0) != 0x40);
+    while((inb(0x1f7) & 0xc0) != 0x40);
     //读取扇区
-    insl(0x1F0, dst, 128);
+    insl(0x1f0, dst, 128);
 }
 //从kernel文件偏移offset中读取count个字节到地址pa
 static void readseg(uint32_t pa, uint32_t count, uint32_t offset) {
@@ -82,7 +82,7 @@ void bootmain(void) {
     //读取kernel文件的前4k
     readseg(0x10000, 4096, 0);
     //判断是否为合法的elf文件
-    if (((struct elfhdr *)0x10000)->e_magic == 0x464C457FU) {
+    if (((struct elfhdr *)0x10000)->e_magic == 0x464c457fu) {
         struct proghdr *ph, *eph;
         //读取kernel文件的每一段并加载到正确的位置
         ph = (struct proghdr *)(0x10000 + (uint32_t)((struct elfhdr *)0x10000)->e_phoff);

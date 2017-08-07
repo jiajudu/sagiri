@@ -22,11 +22,11 @@ ptbl_loop:
     add $0x8, %ebx
     dec %ecx
     jnz ptbl_loop
-    # 启动物理地址扩展 CR4.PAE=1
+    # 启动物理地址扩展 cr4.pae=1
     mov %cr4, %eax
     bts $5, %eax
     mov %eax, %cr4
-    # 使能长模式活动状态位 EFER.LME=1
+    # 使能长模式活动状态位 efer.lme=1
     mov $0xc0000080, %ecx
     rdmsr
     bts $8, %eax
@@ -65,6 +65,6 @@ gdt:
     # 数据段
     .quad 0x0000920000000000
 gdtdesc:
-    # GDT大小 - 1
+    # gdt大小 - 1
     .word 0x17
     .quad gdt

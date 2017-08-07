@@ -5,7 +5,7 @@ int main(){
     fseek(f, 0, 2);
     long size = ftell(f);
     if(size > 512){
-        printf("The bootblock is too large!");
+        printf("the bootblock is too large!");
         exit(1);
     }
     fseek(f, 0, 0);

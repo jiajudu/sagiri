@@ -9,5 +9,5 @@ loop:
     add $0x8, %rdi
     cmp %rcx, %rdi
     jb loop
-    movq $0xFFFF800000010000, %rsp
+    movq $0xffff800000010000, %rsp
     jmp main

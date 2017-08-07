@@ -1,6 +1,6 @@
 #pragma once
 #include "lib/stdint.h"
-// Routines to let C code use special x86 instructions.
+// routines to let c code use special x86 instructions.
 static inline uint8_t inb(uint16_t port) {
     uint8_t data;
     asm volatile("in %1,%0" : "=a" (data) : "d" (port));
@@ -66,7 +66,7 @@ static inline void hlt(void) {
 }
 static inline uint32_t xchg(volatile uint32_t *addr, uint64_t newval) {
     uint32_t result;
-    // The + in "+m" denotes a read-modify-write operand.
+    // the + in "+m" denotes a read-modify-write operand.
     asm volatile("lock; xchgl %0, %1" : "+m" (*addr), "=a" (result) : "1" (newval) : "cc");
     return result;
 }
@@ -78,9 +78,6 @@ static inline uint64_t rcr2(void) {
 static inline void lcr3(uint64_t val) {
     asm volatile("mov %0,%%cr3" : : "r" (val));
 }
-//PAGEBREAK: 36
-// Layout of the trap frame built on the stack by the
-// hardware and by trapasm.S, and passed to trap().
 struct trapframe {
     uint64_t rax;
     uint64_t rbx;

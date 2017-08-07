@@ -1,12 +1,12 @@
-OBJS := kobj/main.o kobj/entry.o kobj/stdio.o kobj/console.o kobj/uart.o kobj/pmm.o
+OBJS := kobj/main.o kobj/entry.o kobj/stdio.o kobj/console.o kobj/uart.o kobj/mm.o kobj/string.o kobj/debug.o
 QEMU = qemu-system-x86_64
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -Wall -MD -ggdb -fno-omit-frame-pointer -ffreestanding -fno-common -nostdlib -gdwarf-2 -m64 -DX64 -mcmodel=large -mtls-direct-seg-refs -mno-red-zone -fno-stack-protector -Ikernel/
 LDFLAGS = -m elf_x86_64 -nodefaultlibs
 kernel.img: out/bootblock out/enable out/kernel.elf
-	dd if=/dev/zero of=kernel.img count=10000
-	dd if=out/bootblock of=kernel.img conv=notrunc
-	dd if=out/enable of=kernel.img seek=1 conv=notrunc
-	dd if=out/kernel.elf of=kernel.img seek=2 conv=notrunc
+	dd if=/dev/zero of=kernel.img count=10000 2> /dev/null
+	dd if=out/bootblock of=kernel.img conv=notrunc 2> /dev/null
+	dd if=out/enable of=kernel.img seek=1 conv=notrunc 2> /dev/null
+	dd if=out/kernel.elf of=kernel.img seek=2 conv=notrunc 2> /dev/null
 kobj/%.o: kernel/*/%.c
 	@mkdir -p kobj
 	gcc $(CFLAGS) -c -o $@ $<
