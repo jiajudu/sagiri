@@ -1,4 +1,5 @@
 #pragma once
-#include "lib/stdint.h"
+#include "lib/util.h"
 uint64_t strlen(char* p);
 void memset(char* p, char c, uint64_t size);
+int64_t memcmp(char* a, char* b, uint64_t size);

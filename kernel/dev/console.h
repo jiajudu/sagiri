@@ -1,3 +1,3 @@
 #pragma once
-#include "lib/stdint.h"
+#include "lib/util.h"
 void consoleput(int64_t c);

@@ -10,14 +10,8 @@ uint64_t* kpgdir;
 static const uint64_t pte_p = 0x001;//是否存在
 static const uint64_t pte_w = 0x002;//是否可写
 static const uint64_t pte_u = 0x004;//用户是否可用
-//内核虚拟地址->物理地址
-static inline uint64_t k2p(uint64_t k){
-    return k - 0xffff800000000000;
-}
-//物理地址->内核虚拟地址
-static inline uint64_t p2k(uint64_t p){
-    return p + 0xffff800000000000;
-}
+static const uint64_t pte_pwt = 0x008;//write through
+static const uint64_t pte_pcd = 0x010;//cache-disable
 //空闲内存页数
 static uint64_t freeblocks = 0;
 //空闲页链表头
@@ -83,7 +77,6 @@ void mminit(){
             memend = memstart + e820->map[i].size;
         }
     }
-    printf("memory: 0x%x -> 0x%x\n", memstart, memend - 1);
     for(uint64_t p = (uint64_t)end; p < 0xffff800000200000; p += 0x1000){
         free(p);
     }
@@ -94,9 +87,24 @@ void mminit(){
         setmap(kpgdir, p2k(p), p, pte_p | pte_w);
     }
     lcr3(k2p((uint64_t)kpgdir));
-    for(uint64_t p = 0x200000; p < memend; p += 0x1000){
-        setmap(kpgdir, p2k(p), p, pte_p | pte_w);
-        free(p2k(p));
+    for (int64_t i = 0; i < e820->nr_map; i++) {
+        if(e820->map[i].type == 1){
+            uint64_t start = e820->map[i].addr;
+            uint64_t end = start + e820->map[i].size;
+            if(start < 0x200000 && end >= 0x200000){
+                start = 0x200000;
+            }
+            for(uint64_t p = start; p < end; p += 0x1000){
+                setmap(kpgdir, p2k(p), p, pte_p | pte_w);
+                free(p2k(p));
+            }
+        }
+        if(e820->map[i].type == 2){
+            uint64_t start = e820->map[i].addr;
+            uint64_t end = start + e820->map[i].size;
+            for(uint64_t p = start; p < end; p += 0x1000){
+                setmap(kpgdir, p2k(p), p, pte_p | pte_w | pte_pcd | pte_pwt);
+            }
+        }
     }
-    printf("mm init finished.\n");
 }

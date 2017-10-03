@@ -1,8 +1,8 @@
 #include "dev/console.h"
-#include "lib/stdint.h"
+#include "lib/util.h"
 #include "lib/stdio.h"
 static void printnum(uint64_t num, uint64_t base){
-    char digits[17] = "0123456789abcedf";
+    char digits[17] = "0123456789abcdef";
     uint64_t buf[20] = {0};
     for(int64_t i = 0; i < 20; i++){
         buf[i] = num % base;

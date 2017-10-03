@@ -9,3 +9,14 @@ void memset(char* p, char c, uint64_t size){
         p[i] = c;
     }
 }
+int64_t memcmp(char* a, char* b, uint64_t size){
+    for(uint64_t i = 0; i < size; i++){
+        if(*a < *b){
+            return -1;
+        }
+        if(*a > *b){
+            return 1;
+        }
+    }
+    return 0;
+}

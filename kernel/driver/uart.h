@@ -1,4 +1,4 @@
 #pragma once
-#include "lib/stdint.h"
+#include "lib/util.h"
 void uartputc(int64_t c);
 void uartearlyinit();
