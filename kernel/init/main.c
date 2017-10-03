@@ -8,6 +8,7 @@ int64_t main() {
     printf("loading...\n");
     mminit();
     acpiinit();
+    
     while(1) {
         ;
     }

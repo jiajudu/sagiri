@@ -68,25 +68,18 @@ void setmap(uint64_t* pgdir, uint64_t va, uint64_t pa, uint64_t flag){
     pgdir4[pt4] = pa | flag;
 }
 void mminit(){
-    //探测物理内存, 得到可用的物理地址范围
-    struct e820map* e820 = (struct e820map *)(0xffff800000008000);
-    uint64_t maxsize = 0;
-    for (int64_t i = 0; i < e820->nr_map; i++) {
-        if(e820->map[i].type == 1 && maxsize < e820->map[i].size){
-            memstart = e820->map[i].addr;
-            memend = memstart + e820->map[i].size;
-        }
-    }
     for(uint64_t p = (uint64_t)end; p < 0xffff800000200000; p += 0x1000){
         free(p);
     }
     kpgdir = (uint64_t*)alloc();
     memset((char*)kpgdir, 0, 0x1000);
+    //探测物理内存, 得到可用的物理地址范围
     //设置虚拟地址地址到物理地址的映射: 虚拟地址 = 物理地址 + 0xffff800000000000. 对所有物理地址有效. 
     for(uint64_t p = 0; p < 0x200000; p += 0x1000){
         setmap(kpgdir, p2k(p), p, pte_p | pte_w);
     }
     lcr3(k2p((uint64_t)kpgdir));
+    struct e820map* e820 = (struct e820map *)(0xffff800000008000);
     for (int64_t i = 0; i < e820->nr_map; i++) {
         if(e820->map[i].type == 1){
             uint64_t start = e820->map[i].addr;
