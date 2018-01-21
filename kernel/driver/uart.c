@@ -1,5 +1,5 @@
-#include "lib/util.h"
-#include "lib/x64.h"
+#include<lib/util.h>
+#include<lib/x64.h>
 static uint64_t com1 = 0x3f8;
 static uint64_t uart;
 static void microdelay(int64_t us) {

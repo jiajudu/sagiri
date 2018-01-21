@@ -1,6 +1,6 @@
-#include "dev/console.h"
-#include "lib/util.h"
-#include "lib/stdio.h"
+#include<dev/console.h>
+#include<lib/util.h>
+#include<lib/stdio.h>
 static void printnum(uint64_t num, uint64_t base){
     char digits[17] = "0123456789abcdef";
     uint64_t buf[20] = {0};

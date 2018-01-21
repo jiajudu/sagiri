@@ -8,7 +8,7 @@ SECTIONS
 
 	PROVIDE(begin = .);
 
-	.text : AT(0x00100000) {
+	.text : AT(0xFFFF800000100000) {
 		*(.text .rela.text .stub .text.* .gnu.linkonce.t.*)
 	}
 

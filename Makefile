@@ -38,7 +38,7 @@ clean:
 ifndef CPUS
 CPUS := 4
 endif
-QEMUOPTS = -net none kernel.img -smp $(CPUS) -m 1024 $(QEMUEXTRA)
+QEMUOPTS = -net none kernel.img -smp $(CPUS) -m 1024
 qemu: kernel.img
 	$(QEMU) -serial mon:stdio -nographic $(QEMUOPTS)
 debug: kernel.img

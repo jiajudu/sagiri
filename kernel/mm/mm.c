@@ -1,8 +1,8 @@
-#include "mm/mm.h"
-#include "lib/x64.h"
-#include "lib/stdio.h"
-#include "lib/string.h"
-#include "debug/debug.h"
+#include<mm/mm.h>
+#include<lib/x64.h>
+#include<lib/stdio.h>
+#include<lib/string.h>
+#include<debug/debug.h>
 uint64_t memstart;
 uint64_t memend;
 extern char end[];
@@ -84,7 +84,7 @@ void mminit(){
         if(e820->map[i].type == 1){
             uint64_t start = e820->map[i].addr;
             uint64_t end = start + e820->map[i].size;
-            if(start < 0x200000 && end >= 0x200000){
+            if(start < 0x200000){
                 start = 0x200000;
             }
             for(uint64_t p = start; p < end; p += 0x1000){
@@ -99,5 +99,8 @@ void mminit(){
                 setmap(kpgdir, p2k(p), p, pte_p | pte_w | pte_pcd | pte_pwt);
             }
         }
+    }
+    for(uint64_t p = 0xfe000000; p < 0xff000000; p += 0x1000) {
+        setmap(kpgdir, p2k(p), p, pte_p | pte_w | pte_pcd | pte_pwt);
     }
 }

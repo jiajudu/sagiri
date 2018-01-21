@@ -1,3 +1,4 @@
 kernel.img
 kobj/
 out/
+.vscode

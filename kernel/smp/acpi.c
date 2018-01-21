@@ -1,9 +1,9 @@
-#include "lib/util.h"
-#include "smp/acpi.h"
-#include "lib/stdio.h"
-#include "mm/mm.h"
-#include "lib/string.h"
-#include "smp/lapic.h"
+#include<lib/util.h>
+#include<smp/acpi.h>
+#include<lib/stdio.h>
+#include<mm/mm.h>
+#include<lib/string.h>
+#include<smp/lapic.h>
 struct rsdp{
     char signature[8];//必须为"RSD PTR "
     uint8_t checksum;//前20byte的校验和
