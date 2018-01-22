@@ -24,8 +24,7 @@ static inline void stosb(void *addr, int32_t data, int32_t cnt) {
 static inline void stosl(void *addr, int32_t data, int32_t cnt) {
     asm volatile("cld; rep stosl" : "=D" (addr), "=c" (cnt) : "0" (addr), "1" (cnt), "a" (data) : "memory", "cc");
 }
-struct segdesc;
-static inline void lgdt(struct segdesc *p, int32_t size) {
+static inline void lgdt(void* p, int32_t size) {
     volatile uint16_t pd[5];
     pd[0] = size-1;
     pd[1] = (uint64_t)p;
@@ -34,8 +33,7 @@ static inline void lgdt(struct segdesc *p, int32_t size) {
     pd[4] = (uint64_t)p >> 48;
     asm volatile("lgdt (%0)" : : "r" (pd));
 }
-struct gatedesc;
-static inline void lidt(struct gatedesc *p, int32_t size) {
+static inline void lidt(void* p, int32_t size) {
     volatile uint16_t pd[5];
     pd[0] = size-1;
     pd[1] = (uint64_t)p;
