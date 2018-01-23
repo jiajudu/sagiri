@@ -41,3 +41,7 @@ void lapicinit() {
     //让lapic允许发送所有中断, 所有优先级低于TPR(lapic + 0x80)的bit7-4的中断不会被发送
     setlapic(0x80 / 4, 0);
 }
+void finishintr() {
+    //向lapic发送中断已经处理完成的信息
+    setlapic(0xb0 / 4, 0);
+}

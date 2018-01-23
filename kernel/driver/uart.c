@@ -1,5 +1,7 @@
 #include<lib/util.h>
 #include<lib/x64.h>
+#include<driver/ioapic.h>
+#include<lib/stdio.h>
 static uint64_t com1 = 0x3f8;
 static uint64_t uart;
 static void microdelay(int64_t us) {
@@ -13,19 +15,35 @@ void uartputc(int64_t c) {
     }
     outb(com1 + 0, c);
 }
+int64_t uartgetc() {
+    if(!(inb(com1 + 5) & 0x1)) {
+        return -1;
+    }else{
+        return inb(com1 + 0);
+    }
+}
 void uartearlyinit() {
-    // turn off the fifo
+    // 见https://en.wikibooks.org/wiki/Serial_Programming/8250_UART_Programming#UART_Registers
+    // 关闭先进先出
     outb(com1 + 2, 0);
-    // 9600 baud, 8 data bits, 1 stop bit, parity off.
-    outb(com1 + 3, 0x80);    // unlock divisor
+    // 开始设置波特率
+    outb(com1 + 3, 0x80);
+    // 设置波特率为9600
     outb(com1 + 0, 115200 / 9600);
     outb(com1 + 1, 0);
-    outb(com1 + 3, 0x03);    // lock divisor, 8 data bits.
+    // 完成设置波特率, 设置字长为8bit, 1个停止位, 无校验位
+    outb(com1 + 3, 0x03);
+    // 设置调试控制寄存器
     outb(com1 + 4, 0);
-    outb(com1 + 1, 0x01);    // enable receive interrupts.
-    // if status is 0xff, no serial port.
-    if(inb(com1 + 5) == 0xff){
-        return;
-    }
+    // 启用收到数据时产生中断
+    outb(com1 + 1, 0x01);
     uart = 1;
+}
+void uartinit() {
+    ioapicenable(4, 0);
+}
+void uartintr() {
+    printf("uart: ");
+    uartputc(uartgetc());
+    printf("\n");
 }

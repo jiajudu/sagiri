@@ -20,7 +20,9 @@ int64_t main() {
     idtinit();
     lapicinit();
     ioapicinit();
+    uartinit();
     printf("kernel is running...\n");
+    sti();
     while(1) {
         ;
     }

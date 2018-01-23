@@ -46,7 +46,7 @@ ptbl_loop:
 .code64
 longmode:
     # 设置段寄存器
-    mov $0x10, %ax
+    mov $0x0, %ax
     mov %ax, %ds
     mov %ax, %ss
     mov %ax, %es

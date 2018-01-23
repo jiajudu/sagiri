@@ -2,6 +2,8 @@
 #include<lib/x64.h>
 #include<trap/trap.h>
 #include<debug/debug.h>
+#include<driver/lapic.h>
+#include<driver/uart.h>
 struct idtentry{
     uint16_t off15_0;
     uint16_t seg;
@@ -13,9 +15,53 @@ struct idtentry{
 };
 struct idtentry idt[256];
 extern uint64_t vectors[256];
+uint64_t tick;
+static void printtrapframe(struct trapframe* tf) {
+    printf("rax: %x ", tf->rax);
+    printf("rbx: %x ", tf->rbx);
+    printf("rcx: %x ", tf->rcx);
+    printf("rdx: %x\n", tf->rdx);
+    printf("rbp: %x ", tf->rbp);
+    printf("rsi: %x ", tf->rsi);
+    printf("rdi: %x ", tf->rdi);
+    printf("r8:  %x\n", tf->r8);
+    printf("r9:  %x ", tf->r9);
+    printf("r10: %x ", tf->r10);
+    printf("r11: %x ", tf->r11);
+    printf("r12: %x\n", tf->r12);
+    printf("r13: %x ", tf->r13);
+    printf("r14: %x ", tf->r14);
+    printf("r15: %x\n", tf->r15);
+    printf("trapno: %d\n", tf->trapno);
+    printf("err:    %d\n", tf->err);
+    printf("rip:    %x\n", tf->rip);
+    printf("cs:     %x\n", tf->cs);
+    printf("rflags: %x\n", tf->rflags);
+    if(((tf->cs) & 0x7) != 0) {
+        printf("rsp: %x\n", tf->rsp);
+        printf("ss: %x\n", tf->ss);
+    }
+}
 void interrupt(struct trapframe* tf){
-    printf("trap: %d\n", tf->trapno);
-    panic("trap!");
+    switch(tf->trapno) {
+        case 32: { //定时器中断
+            tick++;
+            if(tick % 100 == 0) {
+                printf("tick: %d\n", tick);
+            }
+            finishintr();
+            break;
+        }
+        case 36: { //串口中断
+            uartintr();
+            finishintr();
+            break;
+        }
+        default: {
+            printtrapframe(tf);
+            panic("trap!");
+        }
+    }
 }
 void idtinit(){
     //设置中断向量表

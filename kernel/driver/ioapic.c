@@ -16,8 +16,12 @@ void ioapicinit(){
     uint64_t intrnum = (ioapicread(1) >> 16) & 0xff;
     for(uint64_t i = 0; i <= intrnum; i++) {
         //从0x10号寄存器开始, 每两个寄存器代表一个中断(64bit)
-        //bit16表示是否禁用这个中断, bit15表示是电平触发(1)还是边沿触发(0), bit7-0表示对应的中断号
+        //bit63-56中断的目标cpu, bit16表示是否禁用这个中断, bit15表示是电平触发(1)还是边沿触发(0), bit13表示是高电平时激活(0)还是低电平时激活(1), bit7-0表示对应的中断号
         ioapicwrite(0x10 + 2 * i, 0x10000 + 32 + i);
         ioapicwrite(0x10 + 2 * i + 1, 0);
     }
+}
+void ioapicenable(uint64_t irq, uint64_t cpunum) {
+    ioapicwrite(0x10 + 2 * irq, 32 + irq);
+    ioapicwrite(0x10 + 2 * irq + 1, cpunum << 24);
 }

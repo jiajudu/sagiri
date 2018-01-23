@@ -8,3 +8,4 @@ struct ioapic {
 extern volatile struct ioapic* ioapic;
 extern uint32_t ioapicid;
 void ioapicinit();
+void ioapicenable(uint64_t irq, uint64_t cpunum);
