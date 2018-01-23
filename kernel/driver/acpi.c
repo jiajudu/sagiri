@@ -1,9 +1,10 @@
 #include<lib/util.h>
-#include<smp/acpi.h>
+#include<driver/acpi.h>
 #include<lib/stdio.h>
 #include<mm/mm.h>
 #include<lib/string.h>
-#include<smp/lapic.h>
+#include<driver/lapic.h>
+#include<driver/ioapic.h>
 struct rsdp{
     char signature[8];//必须为"RSD PTR "
     uint8_t checksum;//前20byte的校验和
@@ -55,7 +56,6 @@ struct madtioapic{
 } __attribute__((__packed__));
 uint32_t cpuno = 0;
 struct cpu cpus[8];
-uint32_t ioapicid = 0;
 bool issmp = false;
 static struct rsdp* searchrsdp(char* begin, char* end){
     for(char* p = begin; p + sizeof(struct rsdp) < end; p += 4){
@@ -122,20 +122,19 @@ int64_t acpiinit(){
                 if(!(lapic->flags & 1)){
                     break;
                 }
-                printf("acpi: cpu #%d apicid %d\n", cpuno, lapic->apicid);
                 cpus[cpuno].id = cpuno;
                 cpus[cpuno].apicid = lapic->apicid;
                 cpuno++;
             }
             break;
             case 1:{
-                struct madtioapic* ioapic = (struct madtioapic*)p;
+                struct madtioapic* madtioapic = (struct madtioapic*)p;
                 if(length < sizeof(struct madtioapic)){
                     break;
                 }
-                printf("acpi: ioapic #%d @0x%x id=%d base=%d\n", ioapicno, ioapic->ioapicaddr, ioapic->ioapicid, ioapic->globalsysteminterruptbase);
-                ioapicid = ioapic->ioapicid;
+                ioapicid = madtioapic->ioapicid;
                 ioapicno++;
+                ioapic = (void*)p2k((uint64_t)madtioapic->ioapicaddr);
             }
             break;
         }

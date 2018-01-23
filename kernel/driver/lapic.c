@@ -7,7 +7,6 @@ static void setlapic(uint64_t index, uint32_t value) {
     lapic[0x20 / 4];
 }
 void lapicinit() {
-    printf("lapic addr: %x\n", lapic);
     if(!lapic){
         return;
     }
