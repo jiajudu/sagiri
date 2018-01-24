@@ -5,7 +5,7 @@
 #include<lib/x64.h>
 volatile uint32_t* lapic;
 static void microdelay() {
-    
+
 }
 static void setlapic(uint64_t index, uint32_t value) {
     lapic[index] = value;
@@ -54,7 +54,7 @@ void finishintr() {
 }
 int64_t cpunum() {
     // 确定cpu的序号
-    int64_t id = lapic[0x20 / 4];
+    int64_t id = lapic[0x20 / 4] >> 24;
     for(int64_t n = 0; n < cpuno; n++) {
         if(id == cpus[n].apicid) {
             return n;

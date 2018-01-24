@@ -1,10 +1,20 @@
 #include<lib/x64.h>
 #include<lib/string.h>
+#include<lib/stdio.h>
 #include<mm/mm.h>
 #include<mm/seg.h>
+#include<driver/acpi.h>
+#include<driver/lapic.h>
 uint64_t gdt[7];
 uint32_t tss[26];
 void seginit() {
+    void* local = (void*)alloc();
+    memset(local, 0, 4096);
+    //设置cpu的fs段基址
+    uint64_t fsbase = (uint64_t)local + 2048;
+    wrmsr(0xc0000100, fsbase & 0xffffffff, fsbase >> 32);
+    struct cpu* cpu = cpus + cpunum();
+    cpu->local = local;
     gdt[0] = 0x0000000000000000;
     //1-4代表内核代码, 用户代码, 内核数据, 用户数据, 定义见boot/enable64.S
     gdt[1] = 0x0020980000000000;

@@ -62,10 +62,11 @@ static inline void sti(void) {
 static inline void hlt(void) {
     asm volatile("hlt");
 }
-static inline uint32_t xchg(volatile uint32_t *addr, uint64_t newval) {
+static inline uint32_t xchg(void* addr, uint64_t newval) {
     uint32_t result;
+    uint32_t* address = (uint32_t*)addr;
     // the + in "+m" denotes a read-modify-write operand.
-    asm volatile("lock; xchgl %0, %1" : "+m" (*addr), "=a" (result) : "1" (newval) : "cc");
+    asm volatile("lock; xchgl %0, %1" : "+m" (*address), "=a" (result) : "1" (newval) : "cc");
     return result;
 }
 static inline uint64_t rcr2(void) {
@@ -75,4 +76,8 @@ static inline uint64_t rcr2(void) {
 }
 static inline void lcr3(uint64_t val) {
     asm volatile("mov %0,%%cr3" : : "r" (val));
+}
+static inline void wrmsr(uint32_t msr, uint32_t lo, uint32_t hi)
+{
+   asm volatile("wrmsr" : : "a"(lo), "d"(hi), "c"(msr));
 }

@@ -16,6 +16,7 @@ static const uint64_t pte_pcd = 0x010;//cache-disable
 static uint64_t freeblocks = 0;
 //空闲页链表头
 static uint64_t freememory = 0;
+__thread struct cpu* cpu;
 //探测到的内存布局
 struct e820map {
     int nr_map;

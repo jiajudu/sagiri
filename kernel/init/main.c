@@ -31,7 +31,13 @@ static void startothers() {
     }
 }
 void mpstart() {
-    printf("starting...\n");
+    seginit();
+    idtinit();
+    lapicinit();
+    cpu = cpus + cpunum();
+    printf("cpu %d starting\n", cpu->id);
+    xchg(&(cpu->started), 1);
+    //sti();
     while(1) {
         ;
     }
@@ -46,8 +52,9 @@ int64_t main() {
     lapicinit();
     ioapicinit();
     uartinit();
+    cpu = cpus + cpunum();
     startothers();
-    printf("kernel is running...\n");
+    printf("cpu %d starting\n", cpu->id);
     sti();
     while(1) {
         ;

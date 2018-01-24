@@ -29,6 +29,8 @@ longmode:
     mov %ax, %ds
     mov %ax, %ss
     mov %ax, %es
+    mov %ax, %fs
+    mov %ax, %gs
     mov 0x6ff8, %rax
     call *%rax
 .align 16

@@ -50,6 +50,8 @@ longmode:
     mov %ax, %ds
     mov %ax, %ss
     mov %ax, %es
+    mov %ax, %fs
+    mov %ax, %gs
     mov 0x10018, %rax
     call *%rax
 .align 16

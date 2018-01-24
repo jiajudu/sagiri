@@ -12,3 +12,4 @@ static inline uint64_t p2k(uint64_t p){
     return p + 0xffff800000000000;
 }
 extern uint64_t* kpgdir;
+extern __thread struct cpu* cpu;
