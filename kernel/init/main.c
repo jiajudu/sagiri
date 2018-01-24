@@ -4,10 +4,12 @@
 #include<lib/string.h>
 #include<mm/mm.h>
 #include<mm/seg.h>
+#include<mm/malloc.h>
 #include<driver/acpi.h>
 #include<driver/lapic.h>
 #include<driver/ioapic.h>
 #include<trap/trap.h>
+#include<proc/cpu.h>
 char bspstack[4096];
 void _startmp();
 static void startothers() {
@@ -17,7 +19,7 @@ static void startothers() {
     memcopy((char*)p2k(0x7200), _binary_out_entrymp64_start, (uint64_t)_binary_out_entrymp64_size);
     for(struct cpu* c = cpus; c < cpus + cpuno; c++) {
         //不需要启动自身
-        if(c == cpus + cpunum()) {
+        if(c == cpu) {
             continue;
         }
         uint64_t stack = alloc();
@@ -31,10 +33,10 @@ static void startothers() {
     }
 }
 void mpstart() {
+    cpuinit();
     seginit();
     idtinit();
     lapicinit();
-    cpu = cpus + cpunum();
     printf("cpu %d starting\n", cpu->id);
     xchg(&(cpu->started), 1);
     //sti();
@@ -47,14 +49,15 @@ int64_t main() {
     printf("loading...\n");
     mminit();
     acpiinit();
+    cpuinit();
     seginit();
     idtinit();
     lapicinit();
     ioapicinit();
     uartinit();
-    cpu = cpus + cpunum();
     startothers();
     printf("cpu %d starting\n", cpu->id);
+    xchg(&(cpu->started), 1);
     sti();
     while(1) {
         ;

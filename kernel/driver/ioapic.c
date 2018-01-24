@@ -2,7 +2,6 @@
 #include<lib/stdio.h>
 #include<lib/x64.h>
 volatile struct ioapic* ioapic;
-uint32_t ioapicid = 0;
 //ioapic对cpu表现为一系列的寄存器, 其中有一个控制寄存器, 一个数据寄存器. 读一个寄存器时, 先把index写到reg中, 然后在data中读取. 写一个寄存器时, 先把index写到reg中, 然后在data中读取. 
 static uint32_t ioapicread(uint32_t reg) {
     ioapic->reg = reg;

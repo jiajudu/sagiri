@@ -3,6 +3,7 @@
 #include<driver/acpi.h>
 #include<mm/mm.h>
 #include<lib/x64.h>
+#include<proc/cpu.h>
 volatile uint32_t* lapic;
 static void microdelay() {
 
@@ -51,16 +52,6 @@ void lapicinit() {
 void finishintr() {
     //向lapic发送中断已经处理完成的信息
     setlapic(0xb0 / 4, 0);
-}
-int64_t cpunum() {
-    // 确定cpu的序号
-    int64_t id = lapic[0x20 / 4] >> 24;
-    for(int64_t n = 0; n < cpuno; n++) {
-        if(id == cpus[n].apicid) {
-            return n;
-        }
-    }
-    return 0;
 }
 void lapicstartup(uint8_t apicid, uint32_t addr) {
     //见MultiProcessing Specification B.4

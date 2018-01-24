@@ -5,6 +5,7 @@
 #include<lib/string.h>
 #include<driver/lapic.h>
 #include<driver/ioapic.h>
+#include<proc/cpu.h>
 struct rsdp{
     char signature[8];//必须为"RSD PTR "
     uint8_t checksum;//前20byte的校验和
@@ -54,9 +55,6 @@ struct madtioapic{
     uint32_t ioapicaddr;
     uint32_t globalsysteminterruptbase;
 } __attribute__((__packed__));
-uint64_t cpuno = 0;
-struct cpu cpus[8];
-bool issmp = false;
 static struct rsdp* searchrsdp(char* begin, char* end){
     for(char* p = begin; p + sizeof(struct rsdp) < end; p += 4){
         if(memcmp(p, "RSD PTR ", 8) == 0){
@@ -100,7 +98,7 @@ int64_t acpiinit(){
     if(!madt){
         return -1;
     }
-    uint32_t lapicaddr = madt->lapicaddr;
+    lapic = (void*)p2k(madt->lapicaddr);
     char* start = (char*)(madt->entry);
     char* end = (char*)(start + madt->h.length - sizeof(struct madt));
     char* p = start;
@@ -115,15 +113,15 @@ int64_t acpiinit(){
         }
         switch(p[0]){
             case 0:{
-                struct madtlapic* lapic = (struct madtlapic*)p;
+                struct madtlapic* madtlapic = (struct madtlapic*)p;
                 if(length < sizeof(struct madtlapic)){
                     break;
                 }
-                if(!(lapic->flags & 1)){
+                if(!(madtlapic->flags & 1)){
                     break;
                 }
                 cpus[cpuno].id = cpuno;
-                cpus[cpuno].apicid = lapic->apicid;
+                cpus[cpuno].apicid = madtlapic->apicid;
                 cpuno++;
             }
             break;
@@ -132,7 +130,6 @@ int64_t acpiinit(){
                 if(length < sizeof(struct madtioapic)){
                     break;
                 }
-                ioapicid = madtioapic->ioapicid;
                 ioapicno++;
                 ioapic = (void*)p2k((uint64_t)madtioapic->ioapicaddr);
             }
@@ -140,11 +137,5 @@ int64_t acpiinit(){
         }
         p += length;
     }
-    if(cpuno){
-        issmp = true;
-        lapic = (void*)p2k(lapicaddr);
-        return 0;
-    }else{
-        return 1;
-    }
+    return 0;
 }

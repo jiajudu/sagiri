@@ -1,4 +1,5 @@
 #include<mm/mm.h>
+#include<mm/malloc.h>
 #include<lib/x64.h>
 #include<lib/stdio.h>
 #include<lib/string.h>
@@ -12,11 +13,6 @@ static const uint64_t pte_w = 0x002;//是否可写
 static const uint64_t pte_u = 0x004;//用户是否可用
 static const uint64_t pte_pwt = 0x008;//write through
 static const uint64_t pte_pcd = 0x010;//cache-disable
-//空闲内存页数
-static uint64_t freeblocks = 0;
-//空闲页链表头
-static uint64_t freememory = 0;
-__thread struct cpu* cpu;
 //探测到的内存布局
 struct e820map {
     int nr_map;
@@ -26,22 +22,6 @@ struct e820map {
         uint32_t type;//内存类型
     } __attribute__((packed)) map[20];
 };
-//申请一页内存
-uint64_t alloc(){
-    uint64_t ret = 0;
-    if(freememory != 0){
-        freeblocks--;
-        ret = freememory;
-        freememory = *((uint64_t*)freememory);
-    }
-    return ret;
-}
-//释放一页内存
-void free(uint64_t p){
-    freeblocks++;
-    *((uint64_t*)p) = freememory;
-    freememory = p;
-}
 //把虚拟地址pgdir::va映射到pa, 权限为flag
 void setmap(uint64_t* pgdir, uint64_t va, uint64_t pa, uint64_t flag){
     uint64_t pt1 = (va >> 39) & 0x1ff;

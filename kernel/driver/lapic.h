@@ -1,5 +1,5 @@
 #pragma once
-extern volatile void* lapic;
+extern volatile uint32_t* lapic;
 void lapicinit();
 void finishintr();
 int64_t cpunum();
