@@ -1,6 +1,12 @@
 #include<lib/util.h>
 #include<lib/stdio.h>
+#include<driver/acpi.h>
+#include<mm/mm.h>
+#include<lib/x64.h>
 volatile uint32_t* lapic;
+static void microdelay() {
+    
+}
 static void setlapic(uint64_t index, uint32_t value) {
     lapic[index] = value;
     //通过读取ID寄存器来等待前面的操作完成. ID寄存器的位置为lapic+0x20, 大小为32bit
@@ -33,6 +39,7 @@ void lapicinit() {
     setlapic(0xb0 / 4, 0);
     //设置中断命令寄存器(64bit, bit63-32: lapic + 0x310, bit31-0: lapic + 0x300)
     //bit7-0中断向量号, 设置为0. bit10-8: 设置为5(INIT), 用来启动其他CPU. bit11: 目标地址的寻址模式(0: 物理寻址, 1: 逻辑寻址). bit12: Local APIC是否正在发送IPI(Interprocessor Interrupt). bit14: 在INIT模式中, 表示是否为de-assert发送模式. bit15: 触发模式. bit19-18: 目标速记(0: 没有速记, 1: 发送给自己, 2: 所有CPU, 3: 除自己外的所有CPU). bit63-56: 目标CPU, 仅当没有速记时有效. 
+    // Send an Init Level De-Assert to synchronise arbitration ID's.
     setlapic(0x310 / 4, 0);
     setlapic(0x300 / 4, 0x88500);
     while(lapic[0x300 / 4] & 0x1000){
@@ -44,4 +51,32 @@ void lapicinit() {
 void finishintr() {
     //向lapic发送中断已经处理完成的信息
     setlapic(0xb0 / 4, 0);
+}
+int64_t cpunum() {
+    // 确定cpu的序号
+    int64_t id = lapic[0x20 / 4];
+    for(int64_t n = 0; n < cpuno; n++) {
+        if(id == cpus[n].apicid) {
+            return n;
+        }
+    }
+    return 0;
+}
+void lapicstartup(uint8_t apicid, uint32_t addr) {
+    //见MultiProcessing Specification B.4
+    //在启动一个AP时, 必须把BIOS关闭码初始化为0xa, 热重置向量(0x40::0x67)指向AP的启动代码的位置
+    outb(0x70, 0xf);
+    outb(0x71, 0xa);
+    *((uint32_t*)(p2k(0x467))) = addr;
+    //发送init中断
+    setlapic(0x310 / 4, apicid << 24);
+    setlapic(0x300 / 4, 0xc500);
+    microdelay();
+    setlapic(0x300 / 4, 0x8500);
+    microdelay();
+    //发送startup中断
+    setlapic(0x300 / 4, 0x600 | (addr >> 12));
+    microdelay();
+    setlapic(0x300 / 4, 0x600 | (addr >> 12));
+    microdelay();
 }

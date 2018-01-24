@@ -28,8 +28,20 @@ out/enable: boot/enable64.S
 	ld -m elf_x86_64 -nodefaultlibs -N -e start -Ttext 0x7E00 -o out/enable.o out/enable64.o
 	objdump -S out/enable.o > out/enable.asm
 	objcopy -S -O binary -j .text out/enable.o out/enable
-out/kernel.elf: $(OBJS) kernel/kernel.ld
-	ld $(LDFLAGS) -T kernel/kernel.ld -o out/kernel.elf $(OBJS) -b binary
+out/entrymp: kernel/init/entrymp.S
+	@mkdir -p out
+	gcc -fno-builtin -fno-pic -m32 -nostdinc -O -o out/entrymp.o -c kernel/init/entrymp.S
+	ld -m elf_i386 -nodefaultlibs -N -e start -Ttext 0x7000 -o out/entrympblock.o out/entrymp.o
+	objdump -S out/entrympblock.o > out/entrympblock.asm
+	objcopy -S -O binary -j .text out/entrympblock.o out/entrymp
+out/entrymp64: kernel/init/entrymp64.S
+	@mkdir -p out
+	gcc -fno-builtin -fno-pic -m64 -nostdinc -O -o out/entrymp64.o -c kernel/init/entrymp64.S
+	ld -m elf_x86_64 -nodefaultlibs -N -e start -Ttext 0x7200 -o out/entrymp64block.o out/entrymp64.o
+	objdump -S out/entrymp64block.o > out/entrymp64block.asm
+	objcopy -S -O binary -j .text out/entrymp64block.o out/entrymp64
+out/kernel.elf: $(OBJS) kernel/kernel.ld out/entrymp out/entrymp64
+	ld $(LDFLAGS) -T kernel/kernel.ld -o out/kernel.elf $(OBJS) -b binary out/entrymp out/entrymp64
 	objdump -S out/kernel.elf > out/kernel.asm
 	objdump -t out/kernel.elf | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > out/kernel.sym
 clean: 

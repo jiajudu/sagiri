@@ -9,5 +9,10 @@ loop:
     add $0x8, %rdi
     cmp %rcx, %rdi
     jb loop
-    movq $0xffff800000010000, %rsp
+    movabs $bspstack, %rsp
+    addq $4096, %rsp
     jmp main
+.globl _startmp
+_startmp:
+    movq 0x6ff0, %rsp
+    jmp mpstart

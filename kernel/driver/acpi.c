@@ -54,7 +54,7 @@ struct madtioapic{
     uint32_t ioapicaddr;
     uint32_t globalsysteminterruptbase;
 } __attribute__((__packed__));
-uint32_t cpuno = 0;
+uint64_t cpuno = 0;
 struct cpu cpus[8];
 bool issmp = false;
 static struct rsdp* searchrsdp(char* begin, char* end){

@@ -11,3 +11,4 @@ static inline uint64_t k2p(uint64_t k){
 static inline uint64_t p2k(uint64_t p){
     return p + 0xffff800000000000;
 }
+extern uint64_t* kpgdir;

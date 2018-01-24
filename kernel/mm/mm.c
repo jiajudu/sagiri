@@ -103,4 +103,7 @@ void mminit(){
     for(uint64_t p = 0xfe000000; p < 0xff000000; p += 0x1000) {
         setmap(kpgdir, p2k(p), p, pte_p | pte_w | pte_pcd | pte_pwt);
     }
+    for(uint64_t p = 0; p < 0x10000; p += 0x1000) {
+        setmap(kpgdir, p, p, pte_p | pte_w);
+    }
 }
