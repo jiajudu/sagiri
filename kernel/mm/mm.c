@@ -1,5 +1,6 @@
 #include<mm/mm.h>
 #include<mm/malloc.h>
+#include<mm/vm.h>
 #include<lib/x64.h>
 #include<lib/stdio.h>
 #include<lib/string.h>
@@ -7,12 +8,6 @@
 uint64_t memstart;
 uint64_t memend;
 extern char end[];
-uint64_t* kpgdir;
-static const uint64_t pte_p = 0x001;//是否存在
-static const uint64_t pte_w = 0x002;//是否可写
-static const uint64_t pte_u = 0x004;//用户是否可用
-static const uint64_t pte_pwt = 0x008;//write through
-static const uint64_t pte_pcd = 0x010;//cache-disable
 //探测到的内存布局
 struct e820map {
     int nr_map;
@@ -22,32 +17,6 @@ struct e820map {
         uint32_t type;//内存类型
     } __attribute__((packed)) map[20];
 };
-//把虚拟地址pgdir::va映射到pa, 权限为flag
-void setmap(uint64_t* pgdir, uint64_t va, uint64_t pa, uint64_t flag){
-    uint64_t pt1 = (va >> 39) & 0x1ff;
-    uint64_t pt2 = (va >> 30) & 0x1ff;
-    uint64_t pt3 = (va >> 21) & 0x1ff;
-    uint64_t pt4 = (va >> 12) & 0x1ff;
-    if(!(pgdir[pt1] & pte_p)){
-        uint64_t dir2 = alloc();
-        memset((char*)dir2, 0, 0x1000);
-        pgdir[pt1] = k2p(dir2) | pte_p | pte_u | pte_w;
-    }
-    uint64_t* pgdir2 = (uint64_t*)(p2k(pgdir[pt1] & 0xfffffffffffff000));
-    if(!(pgdir2[pt2] & pte_p)){
-        uint64_t dir3 = alloc();
-        memset((char*)dir3, 0, 0x1000);
-        pgdir2[pt2] = k2p(dir3) | pte_p | pte_u | pte_w;
-    }
-    uint64_t* pgdir3 = (uint64_t*)(p2k(pgdir2[pt2] & 0xfffffffffffff000));
-    if(!(pgdir3[pt3] & pte_p)){
-        uint64_t dir4 = alloc();
-        memset((char*)dir4, 0, 0x1000);
-        pgdir3[pt3] = k2p(dir4) | pte_p | pte_u | pte_w;
-    }
-    uint64_t* pgdir4 = (uint64_t*)(p2k(pgdir3[pt3] & 0xfffffffffffff000));
-    pgdir4[pt4] = pa | flag;
-}
 void mminit(){
     for(uint64_t p = (uint64_t)end; p < 0xffff800000200000; p += 0x1000){
         free(p);
@@ -61,6 +30,7 @@ void mminit(){
     }
     lcr3(k2p((uint64_t)kpgdir));
     struct e820map* e820 = (struct e820map *)(0xffff800000008000);
+    uint64_t maxmem = 0;
     for (int64_t i = 0; i < e820->nr_map; i++) {
         if(e820->map[i].type == 1){
             uint64_t start = e820->map[i].addr;
@@ -71,6 +41,9 @@ void mminit(){
             for(uint64_t p = start; p < end; p += 0x1000){
                 setmap(kpgdir, p2k(p), p, pte_p | pte_w);
                 free(p2k(p));
+            }
+            if(end > maxmem){
+                maxmem = end;
             }
         }
         if(e820->map[i].type == 2){
@@ -84,6 +57,7 @@ void mminit(){
     for(uint64_t p = 0xfe000000; p < 0xff000000; p += 0x1000) {
         setmap(kpgdir, p2k(p), p, pte_p | pte_w | pte_pcd | pte_pwt);
     }
+    pagerefinit(maxmem);
     for(uint64_t p = 0; p < 0x10000; p += 0x1000) {
         setmap(kpgdir, p, p, pte_p | pte_w);
     }

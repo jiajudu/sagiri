@@ -1,7 +1,7 @@
 #include<lib/util.h>
 #include<lib/stdio.h>
 #include<driver/acpi.h>
-#include<mm/mm.h>
+#include<mm/vm.h>
 #include<lib/x64.h>
 #include<proc/cpu.h>
 volatile uint32_t* lapic;

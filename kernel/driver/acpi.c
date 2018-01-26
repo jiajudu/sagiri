@@ -1,7 +1,7 @@
 #include<lib/util.h>
 #include<driver/acpi.h>
 #include<lib/stdio.h>
-#include<mm/mm.h>
+#include<mm/vm.h>
 #include<lib/string.h>
 #include<driver/lapic.h>
 #include<driver/ioapic.h>

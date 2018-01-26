@@ -4,6 +4,7 @@
 #include<lib/string.h>
 #include<mm/mm.h>
 #include<mm/seg.h>
+#include<mm/vm.h>
 #include<mm/malloc.h>
 #include<driver/acpi.h>
 #include<driver/lapic.h>
