@@ -12,6 +12,7 @@
 #include<trap/trap.h>
 #include<proc/cpu.h>
 #include<sync/spinlock.h>
+#include<proc/proc.h>
 char bspstack[4096];
 void _startmp();
 static void startothers() {
@@ -40,7 +41,7 @@ void mpstart() {
     seginit();
     idtinit();
     lapicinit();
-    printf("cpu %d starting\n", cpu->id);
+    printf("cpu %d starting, thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
     xchg(&(cpu->started), 1);
     while(bsp->started == 0){
         ;
@@ -61,8 +62,9 @@ int64_t main() {
     lapicinit();
     ioapicinit();
     uartinit();
+    procinit();
     startothers();
-    printf("cpu %d starting\n", cpu->id);
+    printf("cpu %d starting, thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
     xchg(&(cpu->started), 1);
     systemstarted = 1;
     popcli();

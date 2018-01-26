@@ -37,10 +37,8 @@ static void printtrapframe(struct trapframe* tf) {
     printf("rip:    %x\n", tf->rip);
     printf("cs:     %x\n", tf->cs);
     printf("rflags: %x\n", tf->rflags);
-    if(((tf->cs) & 0x7) != 0) {
-        printf("rsp: %x\n", tf->rsp);
-        printf("ss: %x\n", tf->ss);
-    }
+    printf("rsp:    %x\n", tf->rsp);
+    printf("ss:     %x\n", tf->ss);
 }
 void interrupt(struct trapframe* tf){
     switch(tf->trapno) {
