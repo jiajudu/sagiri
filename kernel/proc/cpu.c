@@ -6,6 +6,8 @@
 uint64_t cpuno = 0;
 struct cpu cpus[8];
 __thread struct cpu* cpu;
+struct cpu* bsp;
+uint64_t systemstarted = 0;
 void cpuinit(){
     int64_t index = 0;
     int64_t id = lapic[0x20 / 4] >> 24;

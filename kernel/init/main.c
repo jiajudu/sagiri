@@ -11,6 +11,7 @@
 #include<driver/ioapic.h>
 #include<trap/trap.h>
 #include<proc/cpu.h>
+#include<sync/spinlock.h>
 char bspstack[4096];
 void _startmp();
 static void startothers() {
@@ -18,6 +19,7 @@ static void startothers() {
     memcopy((char*)p2k(0x7000), _binary_out_entrymp_start, (uint64_t)_binary_out_entrymp_size);
     extern char _binary_out_entrymp64_start[], _binary_out_entrymp64_size[];
     memcopy((char*)p2k(0x7200), _binary_out_entrymp64_start, (uint64_t)_binary_out_entrymp64_size);
+    bsp = cpu;
     for(struct cpu* c = cpus; c < cpus + cpuno; c++) {
         //不需要启动自身
         if(c == cpu) {
@@ -40,7 +42,10 @@ void mpstart() {
     lapicinit();
     printf("cpu %d starting\n", cpu->id);
     xchg(&(cpu->started), 1);
-    //sti();
+    while(bsp->started == 0){
+        ;
+    }
+    //popcli();
     while(1) {
         ;
     }
@@ -59,7 +64,8 @@ int64_t main() {
     startothers();
     printf("cpu %d starting\n", cpu->id);
     xchg(&(cpu->started), 1);
-    sti();
+    systemstarted = 1;
+    popcli();
     while(1) {
         ;
     }

@@ -1,23 +1,39 @@
 #include<mm/malloc.h>
 #include<lib/stdio.h>
 #include<debug/debug.h>
+#include<sync/spinlock.h>
+#include<proc/cpu.h>
 uint64_t freeblocks = 0; //空闲内存页数
 uint64_t freememory = 0; //空闲页链表头
+struct spinlock alloclock;
+struct spinlock malloclock;
 uint64_t alloc(){
     //申请一页内存
+    if(systemstarted){
+        acquire(&alloclock);
+    }
     uint64_t ret = 0;
     if(freememory != 0){
         freeblocks--;
         ret = freememory;
         freememory = *((uint64_t*)freememory);
     }
+    if(systemstarted){
+        release(&alloclock);
+    }
     return ret;
 }
 void free(uint64_t p){
     //释放一页内存
+    if(systemstarted){
+        acquire(&alloclock);
+    }
     freeblocks++;
     *((uint64_t*)p) = freememory;
     freememory = p;
+    if(systemstarted){
+        release(&alloclock);
+    }
 }
 uint64_t mfreememory = 0; //malloc分类器的页链表头
 void printpage();
@@ -120,11 +136,13 @@ uint64_t malloc(uint64_t size) {
     if(size > 0xfe0) {
         return 0;
     }
+    acquire(&malloclock);
     uint64_t prev = 0;
     uint64_t cur = mfreememory;
     while(cur != 0) {
         uint64_t ret = mgetblock(cur, size);
         if(ret != 0) {
+            release(&malloclock);
             return ret;
         }
         prev = cur;
@@ -132,6 +150,7 @@ uint64_t malloc(uint64_t size) {
     }
     uint64_t newpage = alloc();
     if(newpage == 0) {
+        release(&malloclock);
         return 0;
     }
     if(prev != 0){
@@ -142,9 +161,11 @@ uint64_t malloc(uint64_t size) {
     cur = newpage;
     minitpage(cur);
     uint64_t ret = mgetblock(cur, size);
+    release(&malloclock);
     return ret;
 }
 void mfree(uint64_t p) {
+    acquire(&malloclock);
     uint64_t prev = 0;
     uint64_t cur = mfreememory;
     while(cur != 0) {
@@ -160,6 +181,7 @@ void mfree(uint64_t p) {
                     free(cur);
                 }
             }
+            release(&malloclock);
             return;
         }
         prev = cur;

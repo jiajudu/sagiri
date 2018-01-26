@@ -122,6 +122,7 @@ int64_t acpiinit(){
                 }
                 cpus[cpuno].id = cpuno;
                 cpus[cpuno].apicid = madtlapic->apicid;
+                cpus[cpuno].clinum = 1;
                 cpuno++;
             }
             break;

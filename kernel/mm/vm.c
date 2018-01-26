@@ -63,13 +63,10 @@ uint64_t* getpagerefpointer(uint64_t p){
     return pagerefdir4 + pt4;
 }
 void pagerefinit(uint64_t maxmem){
-    printf("maxmem: %x\n", maxmem);
-    printf("block: %d\n", freeblocks);
     pagerefdir = (uint64_t*)alloc();
     memset((char*)pagerefdir, 0, 0x1000);
     for(uint64_t p = 0; p < maxmem; p += 0x1000) {
         uint64_t* pagerefaddr = getpagerefpointer(p);
         *pagerefaddr = 0;
     }
-    printf("block: %d\n", freeblocks);
 }
