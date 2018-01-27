@@ -1,6 +1,9 @@
 #include<dev/console.h>
 #include<lib/util.h>
 #include<lib/stdio.h>
+#include<sync/spinlock.h>
+#include<proc/cpu.h>
+static struct spinlock printflock;
 static void printnum(uint64_t num, uint64_t base){
     char digits[17] = "0123456789abcdef";
     uint64_t buf[20] = {0};
@@ -21,6 +24,9 @@ static void printnum(uint64_t num, uint64_t base){
     }
 }
 void printf(char* fmt, ...){
+    if(systemstarted){
+        acquire(&printflock);
+    }
     __builtin_va_list ap;
     __builtin_va_start(ap, fmt);
     for(int64_t i = 0; fmt[i] != 0; i++){
@@ -49,5 +55,8 @@ void printf(char* fmt, ...){
                     break;
             }
         }
+    }
+    if(systemstarted){
+        release(&printflock);
     }
 }

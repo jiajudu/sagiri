@@ -7,6 +7,7 @@
 #include<lib/stdio.h>
 #include<debug/debug.h>
 #include<lib/x64.h>
+#include<proc/schedule.h>
 struct context{
     uint64_t r15;
     uint64_t r14;
@@ -20,7 +21,6 @@ struct context{
 struct proc procs[128];
 struct thread threads[256];
 struct spinlock ptablelock;
-void switchstack(uint64_t* oldrsp, uint64_t* newrsp);
 void kthread();
 static void setidleprocess(){
     //把0号进程和0-(cpuno-1)号线程设置为空闲进程/线程
@@ -34,63 +34,18 @@ static void setidleprocess(){
     }
 }
 uint64_t firstthread(void* args){
-    printf("This is first thread.\n");
-    panic("");
+    static int64_t cpuid = -1;
+    while(1){
+        if(cpu->id != cpuid){
+            printf("cpu %d in thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
+        }
+        cpuid = cpu->id;
+        schedule();
+    }
     return 0;
 }
-struct proc* allocproc(){
-    struct proc* ret = 0;
-    uint64_t curpid = cpu->thread->proc->pid;
-    acquire(&ptablelock);
-    for(uint64_t i = curpid; i < 128; i++){
-        if(!(procs[i].used)){
-            procs[i].used = 1;
-            ret = &(procs[i]);
-            break;
-        }
-    }
-    if(!ret){
-        for(uint64_t i = 0; i < curpid; i++){
-            if(!(procs[i].used)){
-                procs[i].used = 1;
-                ret = &(procs[i]);
-                break;
-            }
-        }
-    }
-    release(&ptablelock);
-    return ret;
-}
-void freeproc(struct proc* p){
-    p->used = 0;
-}
-struct thread* allocthread(){
-    struct thread* ret = 0;
-    uint64_t curtid = cpu->thread->tid;
-    acquire(&ptablelock);
-    for(uint64_t i = curtid; i < 256; i++){
-        if(!(threads[i].state)){
-            threads[i].state = proc_sleeping;
-            ret = &(threads[i]);
-            break;
-        }
-    }
-    if(!ret){
-        for(uint64_t i = 0; i < curtid; i++){
-            if(!(threads[i].state)){
-                threads[i].state = proc_sleeping;
-                ret = &(threads[i]);
-                break;
-            }
-        }
-    }
-    release(&ptablelock);
-    return ret;
-}
-void freethread(struct thread* t){
-    t->state = proc_unused;
-}
 int64_t newthread(uint64_t newproc){
+    acquire(&ptablelock);
     uint64_t* kstack = (uint64_t*)alloc();
     if(kstack == 0){
         return -1;
@@ -103,9 +58,25 @@ int64_t newthread(uint64_t newproc){
             return -1;
         }
     }
-    struct proc* p;
+    struct proc* p = 0;
     if(newproc){
-        p = allocproc();
+        uint64_t curpid = cpu->thread->proc->pid;
+        for(uint64_t i = curpid; i < 128; i++){
+            if(!(procs[i].used)){
+                procs[i].used = 1;
+                p = &(procs[i]);
+                break;
+            }
+        }
+        if(!p){
+            for(uint64_t i = 0; i < curpid; i++){
+                if(!(procs[i].used)){
+                    procs[i].used = 1;
+                    p = &(procs[i]);
+                    break;
+                }
+            }
+        }
         if(p == 0){
             free((uint64_t)kstack);
             free((uint64_t)pgdir);
@@ -114,10 +85,27 @@ int64_t newthread(uint64_t newproc){
     }else{
         p = cpu->thread->proc;
     }
-    struct thread* t = allocthread();
+    struct thread* t = 0;
+    uint64_t curtid = cpu->thread->tid;
+    for(uint64_t i = curtid; i < 256; i++){
+        if(!(threads[i].state)){
+            threads[i].state = proc_sleeping;
+            t = &(threads[i]);
+            break;
+        }
+    }
+    if(!t){
+        for(uint64_t i = 0; i < curtid; i++){
+            if(!(threads[i].state)){
+                threads[i].state = proc_sleeping;
+                t = &(threads[i]);
+                break;
+            }
+        }
+    }
     if(t == 0){
         if(newproc){
-            freeproc(p);
+            p->used = 0;
             free((uint64_t)pgdir);
         }
         free((uint64_t)kstack);
@@ -128,24 +116,12 @@ int64_t newthread(uint64_t newproc){
         p->pgdir = pgdir;
         memcopy((char*)pgdir, (char*)kpgdir, 4096);
         p->stacktop = 0x0000800000000000;
-    }else{
-        t->proc = p;
     }
+    t->proc = p;
     t->kstack = kstack;
     memset((char*)kstack, 0, 4096);
+    release(&ptablelock);
     return t->tid;
-}
-void runthread(struct thread* t){
-    if(t != cpu->thread){
-        acquire(&ptablelock);
-        struct thread* c = cpu->thread;
-        cpu->thread = t;
-        if(c->proc != t->proc){
-            lcr3(k2p((uint64_t)(t->proc->pgdir)));
-        }
-        switchstack(&(c->rsp), &(t->rsp));
-        release(&ptablelock);
-    }
 }
 int64_t kernelthread(uint64_t (*fn)(void *), void *args, uint64_t newproc){
     int64_t newtid = newthread(newproc);
@@ -165,7 +141,6 @@ int64_t kernelthread(uint64_t (*fn)(void *), void *args, uint64_t newproc){
         t->proc->parent = cpu->thread->proc;
     }
     t->state = proc_runnable;
-    runthread(t);
     return 0;
 }
 void procinit(){
@@ -186,7 +161,7 @@ void procinit(){
         procs[i].stacktop = 0x0000800000000000;
     }
     setidleprocess();
-    kernelthread(firstthread, 0, 0);
+    kernelthread(firstthread, 0, 1);
 }
 
 

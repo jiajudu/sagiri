@@ -11,10 +11,10 @@ void memset(char* p, char c, uint64_t size){
 }
 int64_t memcmp(char* a, char* b, uint64_t size){
     for(uint64_t i = 0; i < size; i++){
-        if(*a < *b){
+        if(a[i] < b[i]){
             return -1;
         }
-        if(*a > *b){
+        if(a[i] > b[i]){
             return 1;
         }
     }

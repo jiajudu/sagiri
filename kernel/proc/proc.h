@@ -1,7 +1,7 @@
 #pragma once
 #include<lib/util.h>
 enum procstate{
-    proc_unused, proc_runnable, proc_sleeping, proc_zombie
+    proc_unused, proc_runnable, proc_running, proc_sleeping, proc_zombie
 };
 struct proc{
     uint64_t pid;
@@ -20,4 +20,7 @@ struct thread{
     struct trapframe* tf;
 };
 void procinit();
+extern struct proc procs[128];
+extern struct thread threads[256];
+extern struct spinlock ptablelock;
 

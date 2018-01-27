@@ -13,6 +13,7 @@
 #include<proc/cpu.h>
 #include<sync/spinlock.h>
 #include<proc/proc.h>
+#include<proc/schedule.h>
 char bspstack[4096];
 void _startmp();
 static void startothers() {
@@ -46,9 +47,10 @@ void mpstart() {
     while(bsp->started == 0){
         ;
     }
-    //popcli();
-    while(1) {
-        ;
+    popcli();
+    while(1){
+        schedule();
+        //printf("cpu %d in thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
     }
 }
 int64_t main() {
@@ -69,6 +71,7 @@ int64_t main() {
     systemstarted = 1;
     popcli();
     while(1) {
-        ;
+        schedule();
+        //printf("cpu %d in thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
     }
 }
