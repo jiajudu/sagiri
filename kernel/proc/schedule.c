@@ -15,7 +15,7 @@ void schedule(){
         startthread = cpu->thread->tid;
     }
     for(uint64_t i = startthread; i < 256; i++){
-        if(threads[i].state == proc_runnable){
+        if(threads[i].state == thread_runnable){
             target = i;
             break;
         }
@@ -23,15 +23,26 @@ void schedule(){
     struct thread* t = &(threads[target]);
     if(t != cpu->thread){
         struct thread* c = cpu->thread;
-        if(c->state == proc_running){
-            c->state = proc_runnable;
+        if(c->state == thread_running){
+            c->state = thread_runnable;
         }
         cpu->thread = t;
         if(c->proc != t->proc){
             lcr3(k2p((uint64_t)(t->proc->pgdir)));
         }
-        t->state = proc_running;
+        t->state = thread_running;
         switchstack(&(c->rsp), &(t->rsp));
+        if(cpu->thread->proc->killed){
+            release(&ptablelock);
+            exitproc(-1);
+            acquire(&ptablelock);
+        }
+        if(cpu->thread->killed){
+            release(&ptablelock);
+            printf("thread killed\n");
+            exitthread(-1);
+            acquire(&ptablelock);
+        }
     }
     release(&ptablelock);
 }

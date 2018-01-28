@@ -25,29 +25,13 @@ void kthread();
 static void setidleprocess(){
     //把0号进程和0-(cpuno-1)号线程设置为空闲进程/线程
     procs[0].pgdir = kpgdir;
-    procs[0].used = 1;
+    procs[0].state = proc_running;
     for(uint64_t i = 0; i < cpuno; i++){
         threads[i].kstack = 0;
         threads[i].proc = &(procs[0]);
-        threads[i].state = proc_runnable;
+        threads[i].state = thread_running;
         cpus[i].thread = &(threads[i]);
     }
-}
-uint64_t firstthread(void* args){
-    static int64_t cpuid = -1;
-    static int64_t c = 0;
-    while(1){
-        if(cpu->id != cpuid){
-            printf("cpu %d in thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
-            c++;
-        }
-        if(c == 10){
-            break;
-        }
-        cpuid = cpu->id;
-        schedule();
-    }
-    return 10;
 }
 int64_t allocthread(uint64_t newproc){
     acquire(&ptablelock);
@@ -67,16 +51,16 @@ int64_t allocthread(uint64_t newproc){
     if(newproc){
         uint64_t curpid = cpu->thread->proc->pid;
         for(uint64_t i = curpid; i < 128; i++){
-            if(!(procs[i].used)){
-                procs[i].used = 1;
+            if(procs[i].state == proc_unused){
+                procs[i].state = proc_running;
                 p = &(procs[i]);
                 break;
             }
         }
         if(!p){
             for(uint64_t i = 0; i < curpid; i++){
-                if(!(procs[i].used)){
-                    procs[i].used = 1;
+                if(procs[i].state == proc_unused){
+                    procs[i].state = proc_running;
                     p = &(procs[i]);
                     break;
                 }
@@ -94,7 +78,7 @@ int64_t allocthread(uint64_t newproc){
     uint64_t curtid = cpu->thread->tid;
     for(uint64_t i = curtid; i < 256; i++){
         if(!(threads[i].state)){
-            threads[i].state = proc_sleeping;
+            threads[i].state = thread_sleeping;
             t = &(threads[i]);
             break;
         }
@@ -102,7 +86,7 @@ int64_t allocthread(uint64_t newproc){
     if(!t){
         for(uint64_t i = 0; i < curtid; i++){
             if(!(threads[i].state)){
-                threads[i].state = proc_sleeping;
+                threads[i].state = thread_sleeping;
                 t = &(threads[i]);
                 break;
             }
@@ -110,7 +94,7 @@ int64_t allocthread(uint64_t newproc){
     }
     if(t == 0){
         if(newproc){
-            p->used = 0;
+            p->state = proc_unused;
             free((uint64_t)pgdir);
         }
         free((uint64_t)kstack);
@@ -121,9 +105,11 @@ int64_t allocthread(uint64_t newproc){
         p->pgdir = pgdir;
         memcopy((char*)pgdir, (char*)kpgdir, 4096);
         p->stacktop = 0x0000800000000000;
+        p->killed = 0;
     }
     t->proc = p;
     t->kstack = kstack;
+    t->killed = 0;
     memset((char*)kstack, 0, 4096);
     release(&ptablelock);
     return t->tid;
@@ -145,32 +131,70 @@ int64_t createthread(uint64_t (*fn)(void *), void *args, uint64_t newproc){
     }else{
         t->proc->parent = cpu->thread->proc;
     }
-    t->state = proc_runnable;
+    t->state = thread_runnable;
     return 0;
 }
 void exitthread(int64_t retvalue){
-    printf("exit: %d\n", retvalue);
     acquire(&ptablelock);
+    printf("exitthread\n");
     cpu->thread->retvalue = retvalue;
-    cpu->thread->state = proc_zombie;
+    cpu->thread->state = thread_zombie;
     release(&ptablelock);
     schedule();
+}
+void exitproc(int64_t retvalue){
+    acquire(&ptablelock);
+    printf("exitproc\n");
+    for(uint64_t i = 0; i < 256; i++){
+        if(threads[i].proc == cpu->thread->proc){
+            threads[i].killed = 1;
+        }
+    }
+    cpu->thread->proc->state = proc_exiting;
+    cpu->thread->proc->retvalue = retvalue;
+    release(&ptablelock);
+    schedule();
+}
+uint64_t secondthread(void* args){
+    printf("This is second thread.\n");
+    exitproc(12);
+    return 0;
+}
+uint64_t firstthread(void* args){
+    static int64_t cpuid = -1;
+    static int64_t c = 0;
+    createthread(secondthread, 0, 0);
+    while(1){
+        if(cpu->id != cpuid){
+            printf("cpu %d in thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
+            c++;
+        }
+        if(c == 10){
+            break;
+        }
+        cpuid = cpu->id;
+        schedule();
+    }
+    exitproc(34);
+    return 10;
 }
 void procinit(){
     for(uint64_t i = 0; i < 256; i++){
         threads[i].tid = i;
         threads[i].kstack = 0;
         threads[i].proc = 0;
-        threads[i].state = 0;
+        threads[i].state = thread_unused;
         threads[i].rsp = 0;
+        threads[i].killed = 0;
     }
     for(uint64_t i = 0; i < 128; i++){
         procs[i].heaptop = 0;
         procs[i].parent = 0;
         procs[i].pgdir = 0;
         procs[i].pid = i;
-        procs[i].used = 0;
+        procs[i].state = proc_unused;
         procs[i].stacktop = 0x0000800000000000;
+        procs[i].killed = 0;
     }
     setidleprocess();
     createthread(firstthread, 0, 1);
