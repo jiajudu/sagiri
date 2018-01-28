@@ -136,15 +136,35 @@ int64_t createthread(uint64_t (*fn)(void *), void *args, uint64_t newproc){
 }
 void exitthread(int64_t retvalue){
     acquire(&ptablelock);
-    printf("exitthread\n");
     cpu->thread->retvalue = retvalue;
     cpu->thread->state = thread_zombie;
+    for(uint64_t i = 0; i < 256; i++){
+        if(threads[i].waiter == &(cpu->thread->exitwaiter)){
+            threads[i].state = thread_runnable;
+            threads[i].waiter = 0;
+        }
+    }
+    uint64_t exitproc = 1;
+    for(uint64_t i = 0; i < 256; i++){
+        if(threads[i].proc == cpu->thread->proc && threads[i].state != thread_zombie){
+            exitproc = 0;
+        }
+    }
+    if(exitproc){
+        cpu->thread->proc->state = proc_zombie;
+        cpu->thread->proc->retvalue = retvalue;
+        for(uint64_t i = 0; i < 256; i++){
+            if(threads[i].waiter == &(cpu->thread->proc->exitwaiter)){
+                threads[i].state = thread_runnable;
+                threads[i].waiter = 0;
+            }
+        }
+    }
     release(&ptablelock);
     schedule();
 }
 void exitproc(int64_t retvalue){
     acquire(&ptablelock);
-    printf("exitproc\n");
     for(uint64_t i = 0; i < 256; i++){
         if(threads[i].proc == cpu->thread->proc){
             threads[i].killed = 1;
@@ -155,15 +175,88 @@ void exitproc(int64_t retvalue){
     release(&ptablelock);
     schedule();
 }
+void cleanproc(struct proc* proc){
+    for(uint64_t i = 0; i < 256; i++){
+        if(threads[i].proc == proc){
+            free((uint64_t)threads[i].kstack);
+            threads[i].kstack = 0;
+            threads[i].proc = 0;
+            threads[i].state = thread_unused;
+            threads[i].rsp = 0;
+            threads[i].killed = 0;
+            threads[i].exitwaiter.space = 0;
+            threads[i].waiter = 0;
+        }
+    }
+    proc->heaptop = 0;
+    proc->parent = 0;
+    free((uint64_t)(proc->pgdir));
+    proc->pgdir = 0;
+    proc->state = proc_unused;
+    proc->stacktop = 0x0000800000000000;
+    proc->killed = 0;
+    proc->exitwaiter.space = 0;
+}
+void cleanthread(struct thread* t){
+    free((uint64_t)t->kstack);
+    t->kstack = 0;
+    t->proc = 0;
+    t->state = thread_unused;
+    t->rsp = 0;
+    t->killed = 0;
+    t->exitwaiter.space = 0;
+    t->waiter = 0;
+}
+int64_t waitproc(int64_t pid, int64_t* retp){
+    acquire(&ptablelock);
+    if(pid == 0 || procs[pid].parent != cpu->thread->proc){
+        release(&ptablelock);
+        return -1;
+    }
+    if(procs[pid].state != proc_zombie){
+        cpu->thread->waiter = &(procs[pid].exitwaiter);
+        cpu->thread->state = thread_sleeping;
+        release(&ptablelock);
+        schedule();
+        acquire(&ptablelock);
+        assert(procs[pid].state == proc_zombie);
+    }
+    int64_t ret = procs[pid].retvalue;
+    cleanproc(&(procs[pid]));
+    *retp = ret;
+    release(&ptablelock);
+    return pid;
+}
+int64_t waitthread(int64_t tid, int64_t* retp){
+    acquire(&ptablelock);
+    if(threads[tid].proc != cpu->thread->proc || tid < cpuno){
+        release(&ptablelock);
+        return -1;
+    }
+    if(threads[tid].state != thread_zombie){
+        cpu->thread->waiter = &(threads[tid].exitwaiter);
+        cpu->thread->state = thread_sleeping;
+        release(&ptablelock);
+        schedule();
+        acquire(&ptablelock);
+        assert(threads[tid].state == thread_zombie);
+    }
+    int64_t ret = threads[tid].retvalue;
+    cleanthread(&(threads[tid]));
+    *retp = ret;
+    release(&ptablelock);
+    return tid;
+}
 uint64_t secondthread(void* args){
     printf("This is second thread.\n");
-    exitproc(12);
+    int64_t ret = 0;
+    waitthread(4, &ret);
+    printf("wait ret: %d\n", ret);
     return 0;
 }
 uint64_t firstthread(void* args){
     static int64_t cpuid = -1;
     static int64_t c = 0;
-    createthread(secondthread, 0, 0);
     while(1){
         if(cpu->id != cpuid){
             printf("cpu %d in thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
@@ -175,7 +268,13 @@ uint64_t firstthread(void* args){
         cpuid = cpu->id;
         schedule();
     }
-    exitproc(34);
+    c = 0;
+    if(cpu->thread->proc->pid != 2){    
+        createthread(firstthread, 0, 1);
+        int64_t ret = 0;
+        waitproc(2, &ret);
+        printf("proc 2 exit %d\n", ret);
+    }
     return 10;
 }
 void procinit(){
@@ -186,6 +285,8 @@ void procinit(){
         threads[i].state = thread_unused;
         threads[i].rsp = 0;
         threads[i].killed = 0;
+        threads[i].exitwaiter.space = 0;
+        threads[i].waiter = 0;
     }
     for(uint64_t i = 0; i < 128; i++){
         procs[i].heaptop = 0;
@@ -195,6 +296,7 @@ void procinit(){
         procs[i].state = proc_unused;
         procs[i].stacktop = 0x0000800000000000;
         procs[i].killed = 0;
+        procs[i].exitwaiter.space = 0;
     }
     setidleprocess();
     createthread(firstthread, 0, 1);

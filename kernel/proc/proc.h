@@ -6,6 +6,9 @@ enum threadstate{
 enum procstate{
     proc_unused, proc_running, proc_exiting, proc_zombie
 };
+struct waiter{
+    uint64_t space;
+};
 struct proc{
     uint64_t pid;
     uint64_t state;
@@ -15,6 +18,7 @@ struct proc{
     uint64_t stacktop;
     int64_t retvalue;
     uint64_t killed;
+    struct waiter exitwaiter;
 };
 struct thread{
     uint64_t tid;
@@ -24,6 +28,8 @@ struct thread{
     uint64_t rsp;
     int64_t retvalue;
     uint64_t killed;
+    struct waiter exitwaiter;
+    struct waiter* waiter;
 };
 void procinit();
 void exitthread(int64_t retvalue);
