@@ -8,6 +8,7 @@
 #include<debug/debug.h>
 #include<lib/x64.h>
 #include<proc/schedule.h>
+#include<trap/trap.h>
 struct context{
     uint64_t r15;
     uint64_t r14;
@@ -110,6 +111,7 @@ int64_t allocthread(uint64_t newproc){
     t->proc = p;
     t->kstack = kstack;
     t->killed = 0;
+    t->needschedule = 0;
     memset((char*)kstack, 0, 4096);
     release(&ptablelock);
     return t->tid;
@@ -138,6 +140,7 @@ void exitthread(int64_t retvalue){
     acquire(&ptablelock);
     cpu->thread->retvalue = retvalue;
     cpu->thread->state = thread_zombie;
+    cpu->thread->killed = 0;
     for(uint64_t i = 0; i < 256; i++){
         if(threads[i].waiter == &(cpu->thread->exitwaiter)){
             threads[i].state = thread_runnable;
@@ -165,6 +168,7 @@ void exitthread(int64_t retvalue){
 }
 void exitproc(int64_t retvalue){
     acquire(&ptablelock);
+    cpu->thread->proc->killed = 0;
     for(uint64_t i = 0; i < 256; i++){
         if(threads[i].proc == cpu->thread->proc){
             threads[i].killed = 1;
@@ -247,34 +251,82 @@ int64_t waitthread(int64_t tid, int64_t* retp){
     release(&ptablelock);
     return tid;
 }
+void killproc(uint64_t pid){
+    acquire(&ptablelock);
+    if(pid != 0){
+        procs[pid].killed = 1;
+    }
+    release(&ptablelock);
+}
+void killthread(uint64_t tid){
+    acquire(&ptablelock);
+    if(tid < cpuno && threads[tid].proc == cpu->thread->proc){
+        threads[tid].killed = 1;
+    }
+    release(&ptablelock);
+}
+uint64_t getpid(){
+    uint64_t ret = 0;
+    acquire(&ptablelock);
+    ret = cpu->thread->proc->pid;
+    release(&ptablelock);
+    return ret;
+}
+uint64_t gettid(){
+    uint64_t ret = 0;
+    acquire(&ptablelock);
+    ret = cpu->thread->tid;
+    release(&ptablelock);
+    return ret;
+}
+void sleep(uint64_t ticks){
+    acquire(&ptablelock);
+    cpu->thread->state = thread_sleeping;
+    cpu->thread->waiter = &tick;
+    cpu->thread->tick = ticks;
+    release(&ptablelock);
+    schedule();
+}
+void proctick(){
+    acquire(&ptablelock);
+    for(uint64_t i = 0; i < 256; i++){
+        if(threads[i].state == thread_sleeping && threads[i].waiter == &(tick)){
+            threads[i].tick--;
+            if(threads[i].tick == 0){
+                threads[i].state = thread_runnable;
+                threads[i].waiter = 0;
+            }
+        }
+        if(threads[i].state == thread_running){
+            if(threads[i].tick > 0){
+                threads[i].tick--;
+            }
+            if(threads[i].tick == 0){
+                threads[i].needschedule = 1;
+            }
+        }
+    }
+    release(&ptablelock);
+}
 uint64_t secondthread(void* args){
-    printf("This is second thread.\n");
-    int64_t ret = 0;
-    waitthread(4, &ret);
-    printf("wait ret: %d\n", ret);
+    sleep(200);
+    uint64_t cpuid = -1;
+    while(true){
+        if(cpu->id != cpuid){
+            printf("cpu %d in thread %d, proc %d\n", cpu->id, gettid(), getpid());
+            cpuid = cpu->id;
+        }
+    }
     return 0;
 }
 uint64_t firstthread(void* args){
-    static int64_t cpuid = -1;
-    static int64_t c = 0;
-    while(1){
-        if(cpu->id != cpuid){
-            printf("cpu %d in thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
-            c++;
-        }
-        if(c == 10){
-            break;
-        }
-        cpuid = cpu->id;
-        schedule();
-    }
-    c = 0;
-    if(cpu->thread->proc->pid != 2){    
-        createthread(firstthread, 0, 1);
-        int64_t ret = 0;
-        waitproc(2, &ret);
-        printf("proc 2 exit %d\n", ret);
-    }
+    createthread(secondthread, 0, 0);
+    createthread(secondthread, 0, 0);
+    createthread(secondthread, 0, 0);
+    createthread(secondthread, 0, 0);
+    createthread(secondthread, 0, 0);
+    int64_t ret = 0;
+    waitthread(5, &ret);
     return 10;
 }
 void procinit(){
@@ -287,6 +339,7 @@ void procinit(){
         threads[i].killed = 0;
         threads[i].exitwaiter.space = 0;
         threads[i].waiter = 0;
+        threads[i].needschedule = 0;
     }
     for(uint64_t i = 0; i < 128; i++){
         procs[i].heaptop = 0;

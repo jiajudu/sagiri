@@ -24,3 +24,4 @@ struct trapframe {
     uint64_t ss;
 };
 void idtinit();
+extern struct waiter tick;

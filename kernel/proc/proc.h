@@ -28,12 +28,15 @@ struct thread{
     uint64_t rsp;
     int64_t retvalue;
     uint64_t killed;
+    uint64_t tick;
+    uint64_t needschedule;
     struct waiter exitwaiter;
     struct waiter* waiter;
 };
 void procinit();
 void exitthread(int64_t retvalue);
 void exitproc(int64_t retvalue);
+void proctick();
 extern struct proc procs[128];
 extern struct thread threads[256];
 extern struct spinlock ptablelock;

@@ -4,6 +4,10 @@
 #include<debug/debug.h>
 #include<driver/lapic.h>
 #include<driver/uart.h>
+#include<proc/proc.h>
+#include<sync/spinlock.h>
+#include<proc/cpu.h>
+#include<proc/schedule.h>
 struct idtentry{
     uint16_t off15_0;
     uint16_t seg;
@@ -15,7 +19,8 @@ struct idtentry{
 };
 struct idtentry idt[256];
 extern uint64_t vectors[256];
-uint64_t tick;
+struct waiter tick;
+struct spinlock ticklock;
 static void printtrapframe(struct trapframe* tf) {
     printf("rax: %x ", tf->rax);
     printf("rbx: %x ", tf->rbx);
@@ -43,10 +48,13 @@ static void printtrapframe(struct trapframe* tf) {
 void interrupt(struct trapframe* tf){
     switch(tf->trapno) {
         case 32: { //定时器中断
-            tick++;
-            if(tick % 100 == 0) {
-                printf("tick: %d\n", tick);
+            acquire(&ticklock);
+            tick.space++;
+            proctick();
+            if(tick.space % 100 == 0) {
+                //printf("tick: %d\n", tick);
             }
+            release(&ticklock);
             finishintr();
             break;
         }
@@ -59,6 +67,9 @@ void interrupt(struct trapframe* tf){
             printtrapframe(tf);
             panic("trap!");
         }
+    }
+    if(cpu->thread->needschedule){
+        schedule();
     }
 }
 void idtinit(){

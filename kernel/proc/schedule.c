@@ -11,6 +11,7 @@ void schedule(){
     acquire(&ptablelock);
     uint64_t startthread = cpuno;
     uint64_t target = cpu->id;
+    cpu->thread->needschedule = 0;
     if(cpu->thread->tid >= cpuno){
         startthread = cpu->thread->tid;
     }
@@ -33,16 +34,18 @@ void schedule(){
         t->state = thread_running;
         switchstack(&(c->rsp), &(t->rsp));
         if(cpu->thread->proc->killed){
+            cpu->thread->tick = 10;
             release(&ptablelock);
             exitproc(-1);
             acquire(&ptablelock);
         }
         if(cpu->thread->killed){
+            cpu->thread->tick = 10;
             release(&ptablelock);
-            printf("thread killed\n");
             exitthread(-1);
             acquire(&ptablelock);
         }
     }
+    cpu->thread->tick = 10;
     release(&ptablelock);
 }
