@@ -10,6 +10,7 @@ struct proc{
     uint64_t* pgdir;
     uint64_t heaptop;//一个用户进程的地址空间为0x400000-heaptop, stacktop-0x0000800000000000
     uint64_t stacktop;
+    int64_t retvalue;
 };
 struct thread{
     uint64_t tid;
@@ -17,7 +18,7 @@ struct thread{
     uint64_t state;   
     struct proc* proc;
     uint64_t rsp;
-    struct trapframe* tf;
+    int64_t retvalue;
 };
 void procinit();
 extern struct proc procs[128];

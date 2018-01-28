@@ -35,16 +35,21 @@ static void setidleprocess(){
 }
 uint64_t firstthread(void* args){
     static int64_t cpuid = -1;
+    static int64_t c = 0;
     while(1){
         if(cpu->id != cpuid){
             printf("cpu %d in thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
+            c++;
+        }
+        if(c == 10){
+            break;
         }
         cpuid = cpu->id;
         schedule();
     }
-    return 0;
+    return 10;
 }
-int64_t newthread(uint64_t newproc){
+int64_t allocthread(uint64_t newproc){
     acquire(&ptablelock);
     uint64_t* kstack = (uint64_t*)alloc();
     if(kstack == 0){
@@ -123,8 +128,8 @@ int64_t newthread(uint64_t newproc){
     release(&ptablelock);
     return t->tid;
 }
-int64_t kernelthread(uint64_t (*fn)(void *), void *args, uint64_t newproc){
-    int64_t newtid = newthread(newproc);
+int64_t createthread(uint64_t (*fn)(void *), void *args, uint64_t newproc){
+    int64_t newtid = allocthread(newproc);
     if(newtid < 0){
         return newtid;
     }
@@ -143,6 +148,14 @@ int64_t kernelthread(uint64_t (*fn)(void *), void *args, uint64_t newproc){
     t->state = proc_runnable;
     return 0;
 }
+void exitthread(int64_t retvalue){
+    printf("exit: %d\n", retvalue);
+    acquire(&ptablelock);
+    cpu->thread->retvalue = retvalue;
+    cpu->thread->state = proc_zombie;
+    release(&ptablelock);
+    schedule();
+}
 void procinit(){
     for(uint64_t i = 0; i < 256; i++){
         threads[i].tid = i;
@@ -150,7 +163,6 @@ void procinit(){
         threads[i].proc = 0;
         threads[i].state = 0;
         threads[i].rsp = 0;
-        threads[i].tf = 0;
     }
     for(uint64_t i = 0; i < 128; i++){
         procs[i].heaptop = 0;
@@ -161,7 +173,7 @@ void procinit(){
         procs[i].stacktop = 0x0000800000000000;
     }
     setidleprocess();
-    kernelthread(firstthread, 0, 1);
+    createthread(firstthread, 0, 1);
 }
 
 

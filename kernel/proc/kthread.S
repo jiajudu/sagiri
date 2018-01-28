@@ -6,3 +6,5 @@ kthread:
     call *%rax
     movq %rbx, %rdi
     call *%r15
+    movq %rax, %rdi
+    call exitthread
