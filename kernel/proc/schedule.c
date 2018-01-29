@@ -6,6 +6,7 @@
 #include<mm/vm.h>
 #include<lib/stdio.h>
 #include<lib/string.h>
+#include<mm/seg.h>
 void switchstack(uint64_t* oldrsp, uint64_t* newrsp);
 void schedule(){
     acquire(&ptablelock);
@@ -33,6 +34,7 @@ void schedule(){
         }
         t->state = thread_running;
         switchstack(&(c->rsp), &(t->rsp));
+        settssrsp();
         if(cpu->thread->proc->killed){
             cpu->thread->tick = 10;
             release(&ptablelock);

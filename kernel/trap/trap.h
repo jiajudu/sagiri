@@ -25,3 +25,13 @@ struct trapframe {
 };
 void idtinit();
 extern struct waiter tick;
+struct idtentry{
+    uint16_t off15_0;
+    uint16_t seg;
+    uint8_t ist_resv1;
+    uint8_t p_dpl_s_type;
+    uint16_t off31_16;
+    uint32_t off63_32;
+    uint32_t resv2;
+};
+extern struct idtentry idt[256];

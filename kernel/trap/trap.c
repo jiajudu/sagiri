@@ -8,20 +8,12 @@
 #include<sync/spinlock.h>
 #include<proc/cpu.h>
 #include<proc/schedule.h>
-struct idtentry{
-    uint16_t off15_0;
-    uint16_t seg;
-    uint8_t ist_resv1;
-    uint8_t p_dpl_s_type;
-    uint16_t off31_16;
-    uint32_t off63_32;
-    uint32_t resv2;
-};
 struct idtentry idt[256];
 extern uint64_t vectors[256];
 struct waiter tick;
 struct spinlock ticklock;
 static void printtrapframe(struct trapframe* tf) {
+    printf("trap frame @%x\n", tf);
     printf("rax: %x ", tf->rax);
     printf("rbx: %x ", tf->rbx);
     printf("rcx: %x ", tf->rcx);

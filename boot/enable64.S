@@ -26,10 +26,11 @@ ptbl_loop:
     mov %cr4, %eax
     bts $5, %eax
     mov %eax, %cr4
-    # 使能长模式活动状态位 efer.lme=1
+    # 使能长模式活动状态和syscall enable位 efer.lme=1 efer.sce=1
     mov $0xc0000080, %ecx
     rdmsr
     bts $8, %eax
+    bts $0, %eax
     wrmsr
     # 设置页表
     mov $0x1000, %eax

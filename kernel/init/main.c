@@ -14,6 +14,7 @@
 #include<sync/spinlock.h>
 #include<proc/proc.h>
 #include<proc/schedule.h>
+#include<syscall/syscall.h>
 char bspstack[4096];
 void _startmp();
 static void startothers() {
@@ -27,9 +28,9 @@ static void startothers() {
         if(c == cpu) {
             continue;
         }
-        uint64_t stack = alloc();
+        uint64_t kstack = (uint64_t)threads[c - cpus].kstack;
         *(uint64_t*)(p2k(0x7000) - 8) = (uint64_t)_startmp;
-        *(uint64_t*)(p2k(0x7000) - 16) = (uint64_t)(stack + 4096);
+        *(uint64_t*)(p2k(0x7000) - 16) = (uint64_t)(kstack + 4096);
         *(uint64_t*)(p2k(0x7000) - 24) = k2p((uint64_t)kpgdir);
         lapicstartup(c->apicid, 0x7000);
         while(c->started == 0) {
@@ -42,6 +43,7 @@ void mpstart() {
     seginit();
     idtinit();
     lapicinit();
+    syscallinit();
     printf("cpu %d starting, thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
     xchg(&(cpu->started), 1);
     while(bsp->started == 0){
@@ -49,8 +51,7 @@ void mpstart() {
     }
     popcli();
     while(1){
-        schedule();
-        //printf("cpu %d in thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
+        cpu->thread->needschedule = 1;
     }
 }
 int64_t main() {
@@ -65,13 +66,13 @@ int64_t main() {
     ioapicinit();
     uartinit();
     procinit();
+    syscallinit();
     startothers();
     printf("cpu %d starting, thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
     xchg(&(cpu->started), 1);
     systemstarted = 1;
     popcli();
     while(1) {
-        schedule();
-        //printf("cpu %d in thread %d, proc %d\n", cpu->id, cpu->thread->tid, cpu->thread->proc->pid);
+        cpu->thread->needschedule = 1;
     }
 }

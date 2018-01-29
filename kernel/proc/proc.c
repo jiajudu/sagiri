@@ -9,6 +9,7 @@
 #include<lib/x64.h>
 #include<proc/schedule.h>
 #include<trap/trap.h>
+#include<syscall/syscall.h>
 struct context{
     uint64_t r15;
     uint64_t r14;
@@ -23,12 +24,17 @@ struct proc procs[128];
 struct thread threads[256];
 struct spinlock ptablelock;
 void kthread();
+extern char bspstack[4096];
 static void setidleprocess(){
     //把0号进程和0-(cpuno-1)号线程设置为空闲进程/线程
     procs[0].pgdir = kpgdir;
     procs[0].state = proc_running;
     for(uint64_t i = 0; i < cpuno; i++){
-        threads[i].kstack = 0;
+        if(cpu == &(cpus[i])){
+            threads[i].kstack = (uint64_t*)bspstack;
+        }else{
+            threads[i].kstack = (uint64_t*)alloc();
+        }
         threads[i].proc = &(procs[0]);
         threads[i].state = thread_running;
         cpus[i].thread = &(threads[i]);
@@ -308,26 +314,13 @@ void proctick(){
     }
     release(&ptablelock);
 }
-uint64_t secondthread(void* args){
-    sleep(200);
-    uint64_t cpuid = -1;
-    while(true){
-        if(cpu->id != cpuid){
-            printf("cpu %d in thread %d, proc %d\n", cpu->id, gettid(), getpid());
-            cpuid = cpu->id;
-        }
-    }
-    return 0;
-}
 uint64_t firstthread(void* args){
-    createthread(secondthread, 0, 0);
-    createthread(secondthread, 0, 0);
-    createthread(secondthread, 0, 0);
-    createthread(secondthread, 0, 0);
-    createthread(secondthread, 0, 0);
-    int64_t ret = 0;
-    waitthread(5, &ret);
-    return 10;
+    struct syscallframe sf;
+    sf.rcx = 0x400000;
+    sf.r10 = 0x00007ffffffffff0;
+    sf.r11 = readeflags();
+    switchtouser(&sf);
+    return 0;
 }
 void procinit(){
     for(uint64_t i = 0; i < 256; i++){
@@ -354,5 +347,3 @@ void procinit(){
     setidleprocess();
     createthread(firstthread, 0, 1);
 }
-
-
