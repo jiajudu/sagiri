@@ -2,6 +2,8 @@
 #include<mm/malloc.h>
 #include<lib/string.h>
 #include<lib/stdio.h>
+#include<proc/cpu.h>
+#include<sync/spinlock.h>
 uint64_t* kpgdir;
 const uint64_t pte_p = 0x001;//是否存在
 const uint64_t pte_w = 0x002;//是否可写
@@ -69,4 +71,20 @@ void pagerefinit(uint64_t maxmem){
         uint64_t* pagerefaddr = getpagerefpointer(p);
         *pagerefaddr = 0;
     }
+}
+void pagefault(uint64_t addr){
+    //printf("pagefault: %x\n", addr);
+    addr = addr / 0x1000 * 0x1000;
+    acquire(&(cpu->thread->proc->pgdirlock));
+    if((addr >= 0x4000 && addr < cpu->thread->proc->heaptop) || (addr >= cpu->thread->proc->stacktop && addr < 0x800000000000)){
+        uint64_t p = k2p(alloc());
+        setmap(cpu->thread->proc->pgdir, addr, p, pte_p | pte_u | pte_w);
+        uint64_t* paref = getpagerefpointer(p);
+        *paref = 1;
+    }else{
+        release(&(cpu->thread->proc->pgdirlock));
+        printf("killed.\n");
+        exitproc(-1);
+    }
+    release(&(cpu->thread->proc->pgdirlock));
 }

@@ -13,5 +13,6 @@ extern uint64_t cpuno;
 extern struct cpu cpus[8];
 extern uint64_t systemstarted;
 extern __thread struct cpu* cpu;
+extern __thread uint64_t syscallrsp;
 extern struct cpu* bsp;
 void cpuinit();

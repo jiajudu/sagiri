@@ -27,4 +27,5 @@ void settssrsp(){
     uint64_t rsp = (uint64_t)cpu->thread->kstack + 4096;
     uint64_t* tss = (uint64_t*)(cpu->local + 0xe04);
     *tss = rsp;
+    syscallrsp = rsp;
 }

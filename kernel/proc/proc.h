@@ -1,5 +1,6 @@
 #pragma once
 #include<lib/util.h>
+#include<sync/spinlock.h>
 enum threadstate{
     thread_unused, thread_runnable, thread_running, thread_sleeping, thread_zombie
 };
@@ -18,6 +19,7 @@ struct proc{
     uint64_t stacktop;
     int64_t retvalue;
     uint64_t killed;
+    struct spinlock pgdirlock;
     struct waiter exitwaiter;
 };
 struct thread{

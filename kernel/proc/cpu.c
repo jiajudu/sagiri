@@ -6,6 +6,7 @@
 uint64_t cpuno = 0;
 struct cpu cpus[8];
 __thread struct cpu* cpu;
+__thread uint64_t syscallrsp;
 struct cpu* bsp;
 uint64_t systemstarted = 0;
 void cpuinit(){

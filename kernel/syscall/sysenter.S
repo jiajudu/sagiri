@@ -2,6 +2,7 @@
 .globl sysenter
 sysenter:
     movq %rsp, %r10
+    movq %fs:(0xfffffffffffffff8), %rsp
     push %rax
     push %rbx
     push %rcx

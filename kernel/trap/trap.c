@@ -8,6 +8,7 @@
 #include<sync/spinlock.h>
 #include<proc/cpu.h>
 #include<proc/schedule.h>
+#include<mm/vm.h>
 struct idtentry idt[256];
 extern uint64_t vectors[256];
 struct waiter tick;
@@ -39,6 +40,12 @@ static void printtrapframe(struct trapframe* tf) {
 }
 void interrupt(struct trapframe* tf){
     switch(tf->trapno) {
+        case 14: { //缺页异常
+            //printtrapframe(tf);
+            uint64_t addr = rcr2();
+            //printf("addr: %x\n", addr);
+            pagefault(addr);
+        }
         case 32: { //定时器中断
             acquire(&ticklock);
             tick.space++;

@@ -10,6 +10,7 @@
 #include<proc/schedule.h>
 #include<trap/trap.h>
 #include<syscall/syscall.h>
+#include<lib/elf.h>
 struct context{
     uint64_t r15;
     uint64_t r14;
@@ -206,6 +207,7 @@ void cleanproc(struct proc* proc){
     proc->stacktop = 0x0000800000000000;
     proc->killed = 0;
     proc->exitwaiter.space = 0;
+    proc->pgdirlock.lock = 0;
 }
 void cleanthread(struct thread* t){
     free((uint64_t)t->kstack);
@@ -315,8 +317,32 @@ void proctick(){
     release(&ptablelock);
 }
 uint64_t firstthread(void* args){
+    extern char _binary_uobj_hello_exe_start[];
+    struct elfhdr* header = (struct elfhdr*)_binary_uobj_hello_exe_start;
+    if(header->magic != 0x464c457f){
+        panic("elf magic error");
+    }
+    struct proghdr* ph = (struct proghdr*)((uint64_t)header + header->phoff);
+    struct proghdr* eph = ph + header->phnum;
+    uint64_t maxaddr = 0x400000;
+    for(; ph < eph; ph++){
+        if(ph->memsz > 0){
+            uint64_t phmaxaddr = (ph->va + ph->memsz + 4095) / 4096 * 4096;
+            if(phmaxaddr > maxaddr){
+                maxaddr = phmaxaddr;
+            }
+        }
+    }
+    cpu->thread->proc->heaptop = maxaddr;
+    cpu->thread->proc->stacktop = 0x800000000000 - 0x8000;
+    ph = (struct proghdr*)((uint64_t)header + header->phoff);
+    for(; ph < eph; ph++){
+        if(ph->memsz > 0){
+            memcopy((char*)ph->va, (char*)((uint64_t)_binary_uobj_hello_exe_start + ph->offset), ph->memsz);
+        }
+    }
     struct syscallframe sf;
-    sf.rcx = 0x400000;
+    sf.rcx = header->entry;
     sf.r10 = 0x00007ffffffffff0;
     sf.r11 = readeflags();
     switchtouser(&sf);
@@ -343,6 +369,7 @@ void procinit(){
         procs[i].stacktop = 0x0000800000000000;
         procs[i].killed = 0;
         procs[i].exitwaiter.space = 0;
+        procs[i].pgdirlock.lock = 0;
     }
     setidleprocess();
     createthread(firstthread, 0, 1);

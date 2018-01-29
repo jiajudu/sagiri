@@ -16,3 +16,4 @@ extern const uint64_t pte_pwt;
 extern const uint64_t pte_pcd;
 void setmap(uint64_t* pgdir, uint64_t va, uint64_t pa, uint64_t flag);
 void pagerefinit(uint64_t maxmem);
+void pagefault(uint64_t addr);
