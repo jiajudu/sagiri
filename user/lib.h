@@ -12,4 +12,6 @@ typedef unsigned long uint64_t;
 #define true 1
 typedef int64_t bool;
 void print(char* s);
-void exit(int64_t ret);
+uint64_t exit(int64_t ret);
+uint64_t getpid();
+void printf(char* fmt, ...);

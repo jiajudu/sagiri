@@ -8,22 +8,23 @@ uint64_t sys_exit(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, ui
     exitproc(-1);
     return 0;
 }
-uint64_t sys_print(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
-    for(uint64_t i = 0; i < arg1; i++){
-        consoleput(*((char*)arg0 + i));
-    }
+uint64_t sys_put(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
+    consoleput(arg0);
     return arg1;
+}
+uint64_t sys_getpid(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
+    return getpid();
 }
 uint64_t (*systable[32])(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t) = {
     sys_exit,
     0,
     0, 
     0,
-    sys_print,
-    0
+    sys_put,
+    sys_getpid
 };
 void syscall(struct syscallframe* sf){
-    systable[sf->rax](sf->rdi, sf->rsi, sf->rdx, sf->r8, sf->r9);
+    sf->rax = systable[sf->rax](sf->rdi, sf->rsi, sf->rdx, sf->r8, sf->r9);
 }
 void syscallinit(){
     //设置IA32_FMASK寄存器, 不改变RFLAGS

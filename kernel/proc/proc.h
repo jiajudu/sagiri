@@ -39,6 +39,7 @@ void procinit();
 void exitthread(int64_t retvalue);
 void exitproc(int64_t retvalue);
 void proctick();
+uint64_t getpid();
 extern struct proc procs[128];
 extern struct thread threads[256];
 extern struct spinlock ptablelock;

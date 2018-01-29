@@ -17,9 +17,12 @@ kobj/%.o: kernel/*/%.S
 uobj/%.o: user/%.c
 	@mkdir -p uobj
 	gcc $(CFLAGS) -Iuser/ -c -o $@ $<
-uobj/%.exe: uobj/%.o uobj/lib.o
+uobj/%.o: user/%.S
 	@mkdir -p uobj
-	ld $(LDFLAGS) -T user/user.ld -o $@ $< uobj/lib.o
+	gcc $(CFLAGS) -Iuser/ -c -o $@ $<
+uobj/%.exe: uobj/%.o uobj/lib.o uobj/libasm.o
+	@mkdir -p uobj
+	ld $(LDFLAGS) -T user/user.ld -o $@ $< uobj/lib.o uobj/libasm.o
 	objdump -S $@ > $@.asm
 	objdump -t $@ | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $@.sym
 out/bootblock: boot/bootasm.S boot/bootmain.c
