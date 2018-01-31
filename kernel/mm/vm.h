@@ -1,5 +1,7 @@
 #pragma once
 #include<lib/util.h>
+#include<proc/proc.h>
+#include<trap/trap.h>
 //内核虚拟地址->物理地址
 static inline uint64_t k2p(uint64_t k){
     return k - 0xffff800000000000;
@@ -16,4 +18,6 @@ extern const uint64_t pte_pwt;
 extern const uint64_t pte_pcd;
 void setmap(uint64_t* pgdir, uint64_t va, uint64_t pa, uint64_t flag);
 void pagerefinit(uint64_t maxmem);
-void pagefault(uint64_t addr);
+void pagefault(uint64_t addr, uint64_t err, struct trapframe* tf);
+void clearusermem();
+void copyusermem(struct proc* from, struct proc* to);

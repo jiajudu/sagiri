@@ -19,12 +19,12 @@ struct context{
     uint64_t rbx;
     uint64_t rbp;
     uint64_t rip;
-    uint64_t padding;
 };
 struct proc procs[128];
 struct thread threads[256];
 struct spinlock ptablelock;
 void kthread();
+void forkret();
 extern char bspstack[4096];
 static void setidleprocess(){
     //把0号进程和0-(cpuno-1)号线程设置为空闲进程/线程
@@ -111,7 +111,8 @@ int64_t allocthread(uint64_t newproc){
     if(newproc){
         p->heaptop = 0;
         p->pgdir = pgdir;
-        memcopy((char*)pgdir, (char*)kpgdir, 4096);
+        memset((char*)pgdir, 0, 4096);
+        memcopy((char*)pgdir + 2048, (char*)kpgdir + 2048, 2048);
         p->stacktop = 0x0000800000000000;
         p->killed = 0;
     }
@@ -143,6 +144,28 @@ int64_t createthread(uint64_t (*fn)(void *), void *args, uint64_t newproc){
     t->state = thread_runnable;
     return 0;
 }
+int64_t fork(){
+    int64_t newtid = allocthread(1);
+    if(newtid < 0){
+        return -1;
+    }
+    acquire(&ptablelock);
+    struct thread* t = &(threads[newtid]);
+    struct proc* p = threads[newtid].proc;
+    copyusermem(cpu->thread->proc, p);
+    struct context c;
+    c.rip = (uint64_t)forkret;
+    t->rsp = (uint64_t)t->kstack + 4096 - sizeof(struct context) - sizeof(struct syscallframe);
+    memcopy((char*)(t->rsp), (char*)(&c), sizeof(struct context));
+    struct syscallframe* sf = (struct syscallframe*)(t->rsp + sizeof(struct context));
+    memcopy((char*)sf, (char*)cpu->thread->sf, sizeof(struct syscallframe));
+    sf->rax = 0;
+    p->parent = cpu->thread->proc;
+    t->state = thread_runnable;
+    int64_t ret = p->pid;
+    release(&ptablelock);
+    return ret;
+}
 void exitthread(int64_t retvalue){
     acquire(&ptablelock);
     cpu->thread->retvalue = retvalue;
@@ -163,6 +186,7 @@ void exitthread(int64_t retvalue){
     if(exitproc){
         cpu->thread->proc->state = proc_zombie;
         cpu->thread->proc->retvalue = retvalue;
+        clearusermem();
         for(uint64_t i = 0; i < 256; i++){
             if(threads[i].waiter == &(cpu->thread->proc->exitwaiter)){
                 threads[i].state = thread_runnable;
@@ -343,7 +367,7 @@ uint64_t firstthread(void* args){
     }
     struct syscallframe sf;
     sf.rcx = header->entry;
-    sf.r10 = 0x00007ffffffffff0;
+    sf.r10 = 0x00007fffffffffe0;
     sf.r11 = readeflags();
     switchtouser(&sf);
     return 0;

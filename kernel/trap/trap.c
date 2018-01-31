@@ -13,8 +13,8 @@ struct idtentry idt[256];
 extern uint64_t vectors[256];
 struct waiter tick;
 struct spinlock ticklock;
-static void printtrapframe(struct trapframe* tf) {
-    printf("trap frame @%x\n", tf);
+void printtrapframe(struct trapframe* tf) {
+    printf("trap frame @%x, pid: %d, tid: %d\n", tf, cpu->thread->proc->pid, cpu->thread->tid);
     printf("rax: %x ", tf->rax);
     printf("rbx: %x ", tf->rbx);
     printf("rcx: %x ", tf->rcx);
@@ -44,7 +44,7 @@ void interrupt(struct trapframe* tf){
             //printtrapframe(tf);
             uint64_t addr = rcr2();
             //printf("addr: %x\n", addr);
-            pagefault(addr);
+            pagefault(addr, tf->err, tf);
         }
         case 32: { //定时器中断
             acquire(&ticklock);

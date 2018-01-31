@@ -77,7 +77,9 @@ static inline uint64_t rcr2(void) {
 static inline void lcr3(uint64_t val) {
     asm volatile("mov %0,%%cr3" : : "r" (val));
 }
-static inline void wrmsr(uint32_t msr, uint32_t lo, uint32_t hi)
-{
+static inline void wrmsr(uint32_t msr, uint32_t lo, uint32_t hi){
    asm volatile("wrmsr" : : "a"(lo), "d"(hi), "c"(msr));
+}
+static inline void invlpg(uint64_t addr) {
+    asm volatile ("invlpg (%0)" :: "r" (addr) : "memory");
 }

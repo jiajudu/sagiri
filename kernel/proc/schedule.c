@@ -7,6 +7,7 @@
 #include<lib/stdio.h>
 #include<lib/string.h>
 #include<mm/seg.h>
+#include<debug/debug.h>
 void switchstack(uint64_t* oldrsp, uint64_t* newrsp);
 void schedule(){
     acquire(&ptablelock);

@@ -15,3 +15,4 @@ void print(char* s);
 uint64_t exit(int64_t ret);
 uint64_t getpid();
 void printf(char* fmt, ...);
+uint64_t fork();

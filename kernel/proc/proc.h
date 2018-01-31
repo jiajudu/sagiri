@@ -1,6 +1,7 @@
 #pragma once
 #include<lib/util.h>
 #include<sync/spinlock.h>
+#include<syscall/syscall.h>
 enum threadstate{
     thread_unused, thread_runnable, thread_running, thread_sleeping, thread_zombie
 };
@@ -34,12 +35,14 @@ struct thread{
     uint64_t needschedule;
     struct waiter exitwaiter;
     struct waiter* waiter;
+    struct syscallframe* sf;
 };
 void procinit();
 void exitthread(int64_t retvalue);
 void exitproc(int64_t retvalue);
 void proctick();
 uint64_t getpid();
+int64_t fork();
 extern struct proc procs[128];
 extern struct thread threads[256];
 extern struct spinlock ptablelock;

@@ -1,18 +1,16 @@
 #include<lib.h>
 uint64_t syscall(uint64_t index, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4, uint64_t arg5);
+uint64_t fork(){
+    return syscall(0, 0, 0, 0, 0, 0);
+}
+uint64_t exit(int64_t ret){
+    return syscall(1, (uint64_t)ret, 0, 0, 0, 0);
+}
 uint64_t put(char s){
     return syscall(4, (uint64_t)s, 0, 0, 0, 0);
 }
-uint64_t exit(int64_t ret){
-    return syscall(0, (uint64_t)ret, 0, 0, 0, 0);
-}
 uint64_t getpid(){
     return syscall(5, 0, 0, 0, 0, 0);
-}
-uint64_t strlen(char* p){
-    uint64_t i = 0;
-    for(; p[i] != 0; i++);
-    return i;
 }
 static void printnum(uint64_t num, uint64_t base){
     char digits[17] = "0123456789abcdef";

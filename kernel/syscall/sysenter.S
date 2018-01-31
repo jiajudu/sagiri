@@ -20,6 +20,7 @@ sysenter:
     push %r15
     movq %rsp, %rdi
     call syscall
+.globl sysexit
 sysexit:
     pop %r15
     pop %r14
@@ -37,9 +38,16 @@ sysexit:
     pop %rbx
     pop %rax
     movq %r10, %rsp
-tdebug:
     sysretq
 .globl switchtouser
 switchtouser:
     movq %rdi, %rsp
+    jmp sysexit
+.globl forkret
+forkret:
+    movabs $ptablelock, %rdi
+    movabs $release, %rax
+    call *%rax
+    movabs $settssrsp, %rax
+    call *%rax
     jmp sysexit

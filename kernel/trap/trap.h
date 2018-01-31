@@ -35,3 +35,4 @@ struct idtentry{
     uint32_t resv2;
 };
 extern struct idtentry idt[256];
+void printtrapframe(struct trapframe* tf);
