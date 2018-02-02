@@ -39,11 +39,14 @@ void printtrapframe(struct trapframe* tf) {
     printf("ss:     %x\n", tf->ss);
 }
 void interrupt(struct trapframe* tf){
+    if(cpu->thread->tid == 4){
+    }
     switch(tf->trapno) {
         case 14: { //缺页异常
-            //printtrapframe(tf);
             uint64_t addr = rcr2();
-            //printf("addr: %x\n", addr);
+            if(addr > 0x800000000000){
+                panic("kernel page fault");
+            }
             pagefault(addr, tf->err, tf);
         }
         case 32: { //定时器中断
@@ -66,6 +69,12 @@ void interrupt(struct trapframe* tf){
             printtrapframe(tf);
             panic("trap!");
         }
+    }
+    if(cpu->thread->proc && cpu->thread->proc->killed){
+        exitproc(-1);
+    }
+    if(cpu->thread->killed){
+        exitthread(-1);
     }
     if(cpu->thread->needschedule){
         schedule();

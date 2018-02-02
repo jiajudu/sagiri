@@ -19,9 +19,11 @@ sysenter:
     push %r14
     push %r15
     movq %rsp, %rdi
+    sti
     call syscall
 .globl sysexit
 sysexit:
+    cli
     pop %r15
     pop %r14
     pop %r13

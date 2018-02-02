@@ -23,9 +23,10 @@ void schedule(){
             break;
         }
     }
+    struct thread* c = cpu->thread;
     struct thread* t = &(threads[target]);
-    if(t != cpu->thread){
-        struct thread* c = cpu->thread;
+    if(t != c){
+        c->cr2 = rcr2();
         if(c->state == thread_running){
             c->state = thread_runnable;
         }
@@ -36,19 +37,15 @@ void schedule(){
         t->state = thread_running;
         switchstack(&(c->rsp), &(t->rsp));
         settssrsp();
-        if(cpu->thread->proc->killed){
-            cpu->thread->tick = 10;
-            release(&ptablelock);
-            exitproc(-1);
-            acquire(&ptablelock);
-        }
-        if(cpu->thread->killed){
-            cpu->thread->tick = 10;
-            release(&ptablelock);
-            exitthread(-1);
-            acquire(&ptablelock);
-        }
+        lcr2(cpu->thread->cr2);
     }
+    assert(cpu->thread->state == thread_running);
     cpu->thread->tick = 10;
     release(&ptablelock);
+    if(cpu->thread->proc && cpu->thread->proc->killed){
+        exitproc(-1);
+    }
+    if(cpu->thread->killed){
+        exitthread(-1);
+    }
 }

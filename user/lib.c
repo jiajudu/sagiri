@@ -6,11 +6,35 @@ uint64_t fork(){
 uint64_t exit(int64_t ret){
     return syscall(1, (uint64_t)ret, 0, 0, 0, 0);
 }
-uint64_t put(char s){
-    return syscall(4, (uint64_t)s, 0, 0, 0, 0);
+uint64_t thread(uint64_t fn, uint64_t* args){
+    return syscall(2, fn, (uint64_t)args, 0, 0, 0);
+}
+uint64_t threadexit(int64_t ret){
+    return syscall(3, ret, 0, 0, 0, 0);
+}
+uint64_t waitproc(uint64_t pid, int64_t* addr){
+    return syscall(4, pid, (uint64_t)addr, 0, 0, 0);
+}
+uint64_t waitthread(uint64_t tid, int64_t* addr){
+    return syscall(5, tid, (uint64_t)addr, 0, 0, 0);
 }
 uint64_t getpid(){
-    return syscall(5, 0, 0, 0, 0, 0);
+    return syscall(6, 0, 0, 0, 0, 0);
+}
+uint64_t gettid(){
+    return syscall(7, 0, 0, 0, 0, 0);
+}
+uint64_t killproc(uint64_t pid){
+    return syscall(8, pid, 0, 0, 0, 0);
+}
+uint64_t killthread(uint64_t tid){
+    return syscall(9, tid, 0, 0, 0, 0);
+}
+uint64_t sleep(uint64_t tick){
+    return syscall(10, tick, 0, 0, 0, 0);
+}
+uint64_t put(char s){
+    return syscall(11, (uint64_t)s, 0, 0, 0, 0);
 }
 static void printnum(uint64_t num, uint64_t base){
     char digits[17] = "0123456789abcdef";

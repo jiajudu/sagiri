@@ -15,7 +15,7 @@
 #include<proc/proc.h>
 #include<proc/schedule.h>
 #include<syscall/syscall.h>
-char bspstack[4096];
+char bspstack[0x8000];
 void _startmp();
 static void startothers() {
     extern char _binary_out_entrymp_start[], _binary_out_entrymp_size[];
@@ -30,7 +30,7 @@ static void startothers() {
         }
         uint64_t kstack = (uint64_t)threads[c - cpus].kstack;
         *(uint64_t*)(p2k(0x7000) - 8) = (uint64_t)_startmp;
-        *(uint64_t*)(p2k(0x7000) - 16) = (uint64_t)(kstack + 4096);
+        *(uint64_t*)(p2k(0x7000) - 16) = (uint64_t)(kstack + 0x8000);
         *(uint64_t*)(p2k(0x7000) - 24) = k2p((uint64_t)kpgdir);
         lapicstartup(c->apicid, 0x7000);
         while(c->started == 0) {

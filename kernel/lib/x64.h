@@ -74,6 +74,9 @@ static inline uint64_t rcr2(void) {
     asm volatile("mov %%cr2,%0" : "=r" (val));
     return val;
 }
+static inline void lcr2(uint64_t val) {
+    asm volatile("mov %0,%%cr2" : : "r" (val));
+}
 static inline void lcr3(uint64_t val) {
     asm volatile("mov %0,%%cr3" : : "r" (val));
 }

@@ -33,8 +33,6 @@ static void setidleprocess(){
     for(uint64_t i = 0; i < cpuno; i++){
         if(cpu == &(cpus[i])){
             threads[i].kstack = (uint64_t*)bspstack;
-        }else{
-            threads[i].kstack = (uint64_t*)alloc();
         }
         threads[i].proc = &(procs[0]);
         threads[i].state = thread_running;
@@ -43,15 +41,10 @@ static void setidleprocess(){
 }
 int64_t allocthread(uint64_t newproc){
     acquire(&ptablelock);
-    uint64_t* kstack = (uint64_t*)alloc();
-    if(kstack == 0){
-        return -1;
-    }
     uint64_t* pgdir = 0;
     if(newproc){
         pgdir = (uint64_t*)alloc();
         if(pgdir == 0){
-            free((uint64_t)kstack);
             return -1;
         }
     }
@@ -75,7 +68,6 @@ int64_t allocthread(uint64_t newproc){
             }
         }
         if(p == 0){
-            free((uint64_t)kstack);
             free((uint64_t)pgdir);
             return -1;
         }
@@ -105,7 +97,6 @@ int64_t allocthread(uint64_t newproc){
             p->state = proc_unused;
             free((uint64_t)pgdir);
         }
-        free((uint64_t)kstack);
         return -1;
     }
     if(newproc){
@@ -117,10 +108,9 @@ int64_t allocthread(uint64_t newproc){
         p->killed = 0;
     }
     t->proc = p;
-    t->kstack = kstack;
     t->killed = 0;
     t->needschedule = 0;
-    memset((char*)kstack, 0, 4096);
+    memset((char*)t->kstack + 0x1000, 0, 0x7000);
     release(&ptablelock);
     return t->tid;
 }
@@ -134,7 +124,7 @@ int64_t createthread(uint64_t (*fn)(void *), void *args, uint64_t newproc){
     c.r15 = (uint64_t)fn;
     c.rbx = (uint64_t)args;
     c.rip = (uint64_t)kthread;
-    t->rsp = (uint64_t)t->kstack + 4096 - sizeof(struct context);
+    t->rsp = (uint64_t)t->kstack + 0x8000 - sizeof(struct context);
     memcopy((char*)(t->rsp), (char*)(&c), sizeof(struct context));
     if(!newproc){
         t->proc = cpu->thread->proc;
@@ -155,7 +145,8 @@ int64_t fork(){
     copyusermem(cpu->thread->proc, p);
     struct context c;
     c.rip = (uint64_t)forkret;
-    t->rsp = (uint64_t)t->kstack + 4096 - sizeof(struct context) - sizeof(struct syscallframe);
+    t->rsp = (uint64_t)t->kstack + 0x8000 - sizeof(struct context) - sizeof(struct syscallframe);
+    t->ustack = 0;
     memcopy((char*)(t->rsp), (char*)(&c), sizeof(struct context));
     struct syscallframe* sf = (struct syscallframe*)(t->rsp + sizeof(struct context));
     memcopy((char*)sf, (char*)cpu->thread->sf, sizeof(struct syscallframe));
@@ -165,6 +156,42 @@ int64_t fork(){
     int64_t ret = p->pid;
     release(&ptablelock);
     return ret;
+}
+int64_t userthread(uint64_t fn, uint64_t args){
+    int64_t newtid = allocthread(0);
+    if(newtid < 0){
+        return -1;
+    }
+    acquire(&ptablelock);
+    struct thread* t = &(threads[newtid]);
+    struct proc* p = cpu->thread->proc;
+    struct context c;
+    c.rip = (uint64_t)forkret;
+    t->rsp = (uint64_t)t->kstack + 0x8000 - sizeof(struct context) - sizeof(struct syscallframe);
+    t->ustack = 0;
+    uint64_t dup = 1;
+    while(dup){
+        dup = 0;
+        for(uint64_t i = 0; i < 256; i++){
+            if(threads[i].proc == p && threads[i].ustack == t->ustack && i != t->tid){
+                dup = 1;
+                t->ustack++;
+                break;
+            }
+        }
+    }
+    memcopy((char*)(t->rsp), (char*)(&c), sizeof(struct context));
+    struct syscallframe* sf = (struct syscallframe*)(t->rsp + sizeof(struct context));
+    sf->r11 = readeflags();
+    sf->r10 = 0x800000000000 - t->ustack * 0x8000 - 0x20;
+    if(sf->r10 < p->stacktop){
+        p->stacktop -= 0x8000;
+    }
+    sf->rcx = fn;
+    sf->rdi = args;
+    t->state = thread_runnable;
+    release(&ptablelock);
+    return newtid;
 }
 void exitthread(int64_t retvalue){
     acquire(&ptablelock);
@@ -185,7 +212,6 @@ void exitthread(int64_t retvalue){
     }
     if(exitproc){
         cpu->thread->proc->state = proc_zombie;
-        cpu->thread->proc->retvalue = retvalue;
         clearusermem();
         for(uint64_t i = 0; i < 256; i++){
             if(threads[i].waiter == &(cpu->thread->proc->exitwaiter)){
@@ -213,8 +239,6 @@ void exitproc(int64_t retvalue){
 void cleanproc(struct proc* proc){
     for(uint64_t i = 0; i < 256; i++){
         if(threads[i].proc == proc){
-            free((uint64_t)threads[i].kstack);
-            threads[i].kstack = 0;
             threads[i].proc = 0;
             threads[i].state = thread_unused;
             threads[i].rsp = 0;
@@ -234,14 +258,13 @@ void cleanproc(struct proc* proc){
     proc->pgdirlock.lock = 0;
 }
 void cleanthread(struct thread* t){
-    free((uint64_t)t->kstack);
-    t->kstack = 0;
     t->proc = 0;
     t->state = thread_unused;
     t->rsp = 0;
     t->killed = 0;
     t->exitwaiter.space = 0;
     t->waiter = 0;
+    t->ustack = 0;
 }
 int64_t waitproc(int64_t pid, int64_t* retp){
     acquire(&ptablelock);
@@ -283,19 +306,27 @@ int64_t waitthread(int64_t tid, int64_t* retp){
     release(&ptablelock);
     return tid;
 }
-void killproc(uint64_t pid){
+int64_t killproc(uint64_t pid){
+    int64_t ret = 0;
     acquire(&ptablelock);
     if(pid != 0){
         procs[pid].killed = 1;
+    }else{
+        ret = -1;
     }
     release(&ptablelock);
+    return ret;
 }
-void killthread(uint64_t tid){
+int64_t killthread(uint64_t tid){
+    int64_t ret = 0;
     acquire(&ptablelock);
-    if(tid < cpuno && threads[tid].proc == cpu->thread->proc){
+    if(tid >= cpuno && threads[tid].proc == cpu->thread->proc){
         threads[tid].killed = 1;
+    }else{
+        ret = -1;
     }
     release(&ptablelock);
+    return ret;
 }
 uint64_t getpid(){
     uint64_t ret = 0;
@@ -359,6 +390,7 @@ uint64_t firstthread(void* args){
     }
     cpu->thread->proc->heaptop = maxaddr;
     cpu->thread->proc->stacktop = 0x800000000000 - 0x8000;
+    cpu->thread->ustack = 0;
     ph = (struct proghdr*)((uint64_t)header + header->phoff);
     for(; ph < eph; ph++){
         if(ph->memsz > 0){
@@ -375,7 +407,6 @@ uint64_t firstthread(void* args){
 void procinit(){
     for(uint64_t i = 0; i < 256; i++){
         threads[i].tid = i;
-        threads[i].kstack = 0;
         threads[i].proc = 0;
         threads[i].state = thread_unused;
         threads[i].rsp = 0;
@@ -383,6 +414,11 @@ void procinit(){
         threads[i].exitwaiter.space = 0;
         threads[i].waiter = 0;
         threads[i].needschedule = 0;
+        threads[i].kstack = (uint64_t*)(0xffffa00000000000 + 0x10000 * i);
+        for(uint64_t j = 1; j < 8; j++){
+            uint64_t pa = k2p(alloc());
+            setmap(kpgdir, 0xffffa00000000000 + 0x10000 * i + 0x1000 * j, pa, pte_p | pte_w);
+        }
     }
     for(uint64_t i = 0; i < 128; i++){
         procs[i].heaptop = 0;

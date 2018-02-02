@@ -70,7 +70,6 @@ uint64_t* getpagerefpointer(uint64_t p){
         pagerefdir3[pt3] = dir4 | 1;
     }
     uint64_t* pagerefdir4 = (uint64_t*)(pagerefdir3[pt3] & 0xfffffffffffff000);
-    //printf("pa: %x, ref: %d\n", p, *(pagerefdir4 + pt4));
     return pagerefdir4 + pt4;
 }
 void pagerefinit(uint64_t maxmem){
@@ -84,7 +83,9 @@ void pagerefinit(uint64_t maxmem){
 void pagefault(uint64_t addr, uint64_t err, struct trapframe* tf){
     addr = addr / 0x1000 * 0x1000;
     acquire(&(cpu->thread->proc->pgdirlock));
-    //printf("fault addr: %x, err: %d\n", addr, err);
+    if(cpu->thread->proc == 0){
+        panic("page fault error\n");
+    }
     if((addr >= 0x400000 && addr < cpu->thread->proc->heaptop) || (addr >= cpu->thread->proc->stacktop && addr < 0x800000000000)){
         if(err & 1){
             acquire(&pagereflock);
@@ -92,7 +93,6 @@ void pagefault(uint64_t addr, uint64_t err, struct trapframe* tf){
             uint64_t oldpa = *pte & 0xfffffffffffff000;
             uint64_t* oldparefp = getpagerefpointer(oldpa);
             if(*oldparefp > 1){
-                //printf("copy mem %x %d->%d pa %x\n", addr, *oldparefp, (*oldparefp) - 1, oldpa);
                 uint64_t newpa = k2p(alloc());
                 if(newpa == 0){
                     panic("mem error");
@@ -103,9 +103,7 @@ void pagefault(uint64_t addr, uint64_t err, struct trapframe* tf){
                 uint64_t* newparefp = getpagerefpointer(newpa);
                 assert(*newparefp == 0);
                 *newparefp += 1;
-                //printf("copyed: %x %d->%d pa %x\n", addr, 0, 1, newpa);
             }else{
-                //printf("make writable: %x %d->%d pa %x\n", addr, (*oldparefp), *oldparefp, oldpa);
                 *pte = *pte | pte_w;
             }
             release(&pagereflock);
@@ -127,6 +125,9 @@ void pagefault(uint64_t addr, uint64_t err, struct trapframe* tf){
     release(&(cpu->thread->proc->pgdirlock));
 }
 void clearusermem(){
+    if(cpu->thread->proc == 0){
+        panic("clear usermem error\n");
+    }
     acquire(&(cpu->thread->proc->pgdirlock));
     acquire(&pagereflock);
     for(uint64_t p = 0x400000; p < cpu->thread->proc->heaptop; p += 0x1000){
@@ -134,7 +135,6 @@ void clearusermem(){
         if(*pte & pte_p){
             uint64_t pa = *pte & 0xfffffffffffff000;
             uint64_t* pagerefp = getpagerefpointer(pa);
-            //printf("clear: %x %d->%d pa %x\n", p, *pagerefp, (*pagerefp) - 1, pa); 
             *pagerefp -= 1;
             if(*pagerefp == 0){
                 free(p2k(pa));
@@ -146,7 +146,6 @@ void clearusermem(){
         if(*pte & pte_p){
             uint64_t pa = *pte & 0xfffffffffffff000;
             uint64_t* pagerefp = getpagerefpointer(pa);
-            //printf("clear: %x %d->%d pa %x\n", p, *pagerefp, (*pagerefp) - 1, pa); 
             *pagerefp -= 1;
             if(*pagerefp == 0){
                 free(p2k(pa));
@@ -157,12 +156,13 @@ void clearusermem(){
     release(&(cpu->thread->proc->pgdirlock));
 }
 void copyusermem(struct proc* from, struct proc* to){
+    assert(from != 0);
+    assert(to != 0);
     acquire(&(from->pgdirlock));
     acquire(&(to->pgdirlock));
     acquire(&pagereflock);
     to->stacktop = 0x800000000000 - 0x8000;
     to->heaptop = from->heaptop;
-    //printf("pgdir: from %x to %x\n", from->pgdir, to->pgdir);
     for(uint64_t p = 0x400000; p < to->heaptop; p += 0x1000){
         uint64_t* ptefrom = getptepointer(from->pgdir, p);
         uint64_t* pteto = getptepointer(to->pgdir, p);
@@ -173,7 +173,6 @@ void copyusermem(struct proc* from, struct proc* to){
             uint64_t* pref = getpagerefpointer(pa);
             *pref += 1;
             invlpg(p);
-            //printf("double ref: %x, %d->%d pa %x pte: %x %x\n", p, (*pref) - 1, *pref, pa, ptefrom, pteto);
         }
     }
     uint64_t currentrsp = cpu->thread->sf->r10;
@@ -182,14 +181,12 @@ void copyusermem(struct proc* from, struct proc* to){
         uint64_t* ptefrom = getptepointer(from->pgdir, currentrsp + spoff);
         uint64_t* pteto = getptepointer(to->pgdir, to->stacktop + spoff);
         if(*ptefrom & pte_p){
-            //printf("from: %x, to: %x\n", currentrsp + spoff, to->stacktop + spoff);
             uint64_t pa = *ptefrom & 0xfffffffffffff000;
             *ptefrom = *ptefrom & (~pte_w);
             *pteto = *ptefrom;
             uint64_t* pref = getpagerefpointer(pa);
             *pref += 1;
             invlpg(currentrsp + spoff);
-            //printf("double ref: %x, %d->%d pa %x pte: %x %x\n", currentrsp + spoff, (*pref) - 1, *pref, pa, ptefrom, pteto);
         }
     }
     release(&pagereflock);
