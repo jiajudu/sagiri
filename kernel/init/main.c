@@ -15,6 +15,7 @@
 #include<proc/proc.h>
 #include<proc/schedule.h>
 #include<syscall/syscall.h>
+#include<fs/fs.h>
 char bspstack[0x8000];
 void _startmp();
 static void startothers() {
@@ -65,6 +66,7 @@ int64_t main() {
     lapicinit();
     ioapicinit();
     uartinit();
+    fsinit();
     procinit();
     syscallinit();
     startothers();

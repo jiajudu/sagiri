@@ -1,8 +1,9 @@
-OBJS = kobj/main.o kobj/entry.o kobj/stdio.o kobj/console.o kobj/uart.o kobj/mm.o kobj/string.o kobj/debug.o kobj/acpi.o kobj/lapic.o kobj/seg.o kobj/vectors.o kobj/trap.o kobj/trapasm.o kobj/ioapic.o kobj/cpu.o kobj/malloc.o kobj/vm.o kobj/spinlock.o kobj/proc.o kobj/kthread.o kobj/switch.o kobj/schedule.o kobj/syscall.o kobj/sysenter.o
+OBJS = kobj/main.o kobj/entry.o kobj/stdio.o kobj/console.o kobj/uart.o kobj/mm.o kobj/string.o kobj/debug.o kobj/acpi.o kobj/lapic.o kobj/seg.o kobj/vectors.o kobj/trap.o kobj/trapasm.o kobj/ioapic.o kobj/cpu.o kobj/malloc.o kobj/vm.o kobj/spinlock.o kobj/proc.o kobj/kthread.o kobj/switch.o kobj/schedule.o kobj/syscall.o kobj/sysenter.o kobj/ide.o kobj/fs.o
 UPROGRAMS = uobj/hello.exe
 QEMU = qemu-system-x86_64
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -Wall -MD -ggdb -fno-omit-frame-pointer -ffreestanding -fno-common -nostdlib -gdwarf-2 -m64 -DX64 -mcmodel=large -mtls-direct-seg-refs -mno-red-zone -fno-stack-protector
 LDFLAGS = -m elf_x86_64 -nodefaultlibs
+all: kernel.img fs.img
 kernel.img: out/bootblock out/enable out/kernel.elf
 	dd if=/dev/zero of=kernel.img count=10000 2> /dev/null
 	dd if=out/bootblock of=kernel.img conv=notrunc 2> /dev/null
@@ -56,13 +57,15 @@ out/kernel.elf: $(OBJS) kernel/kernel.ld out/entrymp out/entrymp64 $(UPROGRAMS)
 	ld $(LDFLAGS) -T kernel/kernel.ld -o out/kernel.elf $(OBJS) -b binary out/entrymp out/entrymp64 $(UPROGRAMS)
 	objdump -S out/kernel.elf > out/kernel.asm
 	objdump -t out/kernel.elf | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > out/kernel.sym
+fs.img: tools/makefs.c
+	gcc tools/makefs.c -o out/makefs
+	out/makefs
 clean: 
-	rm -rf out kobj uobj
-	rm -f kernel.img
+	rm -rf out kobj uobj kernel.img fs.img
 ifndef CPUS
 CPUS := 4
 endif
-QEMUOPTS = -net none kernel.img -smp $(CPUS) -m 1024
+QEMUOPTS = -net none -drive file=kernel.img,index=0,media=disk,format=raw -drive file=fs.img,index=1,media=disk,format=raw -smp $(CPUS) -m 1024
 qemu: kernel.img
 	$(QEMU) -serial mon:stdio -nographic $(QEMUOPTS)
 debug: kernel.img

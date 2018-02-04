@@ -1,4 +1,5 @@
 kernel.img
+fs.img
 kobj/
 uobj/
 out/
