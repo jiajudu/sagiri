@@ -25,3 +25,4 @@ uint64_t killproc(uint64_t pid);
 uint64_t killthread(uint64_t tid);
 uint64_t sleep(uint64_t tick);
 uint64_t open(char* name, uint64_t flag);
+uint64_t close(uint64_t fd);

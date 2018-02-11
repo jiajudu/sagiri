@@ -21,3 +21,4 @@ enum filetype{
 };
 void fsinit();
 int64_t fileopen(char* name, uint64_t flags);
+int64_t fileclose(uint64_t fdn);

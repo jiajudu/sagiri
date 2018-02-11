@@ -411,6 +411,34 @@ int64_t fileopen(char* name, uint64_t flags){
     release(&fslock);
     return ret;
 }
+int64_t fileclose(uint64_t fdn){
+    acquire(&fslock);
+    if(fdn < 0 || fdn >= 16){
+        release(&fslock);
+        return -1;
+    }
+    struct filedescriptor* fd = cpu->thread->proc->pfdtable[fdn];
+    if(fd == 0){
+        release(&fslock);
+        return -1;
+    }
+    struct file* file = fd->fnode;
+    fd->ref--;
+    if(fd->ref == 0){
+        freefiledescriptor(fd);
+    }
+    while(file != 0){
+        file->ref--;
+        struct file* parent = file->parent;
+        if(file->ref == 0){
+            freefile(file);
+        }
+        file = parent;
+    }
+    cpu->thread->proc->pfdtable[fdn] = 0;
+    release(&fslock);
+    return 0;
+}
 void fsinit(){
     sb = readsuperblock();
     for(uint64_t i = 0; i < 512; i++){
