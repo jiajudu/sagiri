@@ -13,7 +13,9 @@ int64_t main(){
     close(fd);
     fd = open("/license", 6);
     for(uint64_t i = 0; i < 100; i++){
-        write(fd, "Hello World\n", 12);
+        int64_t writeret = write(fd, "Hello World ", 12);
     }
+    printf("write finish\n");
+    close(fd);
     return 0;
 }

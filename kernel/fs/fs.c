@@ -72,30 +72,14 @@ struct inode getinode(uint64_t inodenum){
     struct inode ret = *(((struct inode*)buf) + inodenum % 8);
     return ret;
 }
-void writeinode(uint64_t inodenum, struct inode* node){
+void setinode(uint64_t inodenum, struct inode* node){
     uint64_t no = inodenum / 8 + 1 + sb.bitmapblock;
     char buf[512];
     readsect((uint64_t)buf, no);
     *(((struct inode*)buf) + inodenum % 8) = *node;
     writesect((uint64_t)buf, no);
 }
-void getblock(uint64_t pagenum, char* buf){
-    uint64_t no = pagenum + 1 + sb.bitmapblock + sb.inodeblocks;
-    readsect((uint64_t)buf, no);
-}
-void writeblock(uint64_t pagenum, char* buf){
-    uint64_t no = pagenum + 1 + sb.bitmapblock + sb.inodeblocks;
-    writesect((uint64_t)buf, no);
-}
-uint64_t allocblock(){
-    int64_t no = bitmapgetfreeblock(1 + sb.bitmapblock + sb.inodeblocks, 1 + sb.bitmapblock + sb.inodeblocks + sb.datablocks);
-    if(no < 0){
-        return -1;
-    }
-    bitmapsetused(no);
-    return no - 1 - sb.bitmapblock - sb.inodeblocks;
-}
-uint64_t allocinode(enum filetype type){
+int64_t allocinode(enum filetype type){
     int64_t freeblocknum = bitmapgetfreeblock(1 + sb.bitmapblock, 1 + sb.bitmapblock + sb.inodeblocks);
     if(freeblocknum < 0){
         return -1;
@@ -128,8 +112,27 @@ uint64_t allocinode(enum filetype type){
 void freeinode(uint64_t no){
     struct inode node = getinode(no);
     node.type = file_unused;
-    writeinode(no, &node);
+    setinode(no, &node);
     bitmapsetunused(1 + sb.bitmapblock + no / 8);
+}
+void getblock(uint64_t pagenum, char* buf){
+    uint64_t no = pagenum + 1 + sb.bitmapblock + sb.inodeblocks;
+    readsect((uint64_t)buf, no);
+}
+void setblock(uint64_t pagenum, char* buf){
+    uint64_t no = pagenum + 1 + sb.bitmapblock + sb.inodeblocks;
+    writesect((uint64_t)buf, no);
+}
+int64_t allocblock(){
+    int64_t no = bitmapgetfreeblock(1 + sb.bitmapblock + sb.inodeblocks, 1 + sb.bitmapblock + sb.inodeblocks + sb.datablocks);
+    if(no < 0){
+        return -1;
+    }
+    bitmapsetused(no);
+    return no - 1 - sb.bitmapblock - sb.inodeblocks;
+}
+void freeblock(uint64_t no){
+    bitmapsetunused(1 + sb.bitmapblock + sb.inodeblocks + no);
 }
 struct file* allocfile(){
     for(uint64_t i = 0; i < 512; i++){
@@ -141,6 +144,9 @@ struct file* allocfile(){
     }
     return 0;
 }
+void freefile(struct file* f){
+    f->inode.type = file_unused;
+}
 struct filedescriptor* allocfiledescriptor(){
     for(uint64_t i = 0; i < 512; i++){
         if(fdtable[i].used == 0){
@@ -149,9 +155,6 @@ struct filedescriptor* allocfiledescriptor(){
         }
     }
     return 0;
-}
-void freefile(struct file* f){
-    f->inode.type = file_unused;
 }
 void freefiledescriptor(struct filedescriptor* fd){
     fd->used = 0;
@@ -204,7 +207,7 @@ uint64_t verifyfilename(char* name){
         return 0;
     }
 }
-uint64_t finditemindirectory(struct file* parent, char* name){
+int64_t finditemindirectory(struct file* parent, char* name){
     assert(strlen(name) <= 12);
     uint64_t childnum = parent->inode.size / 16;
     uint64_t childptr = 0;
@@ -271,7 +274,7 @@ struct file* getparentinode(char* name){
     }
     return cur;
 }
-uint64_t createfileindir(struct file* n, char* name){
+int64_t createfileindir(struct file* n, char* name){
     assert(strlen(name) <= 12);
     if(n->inode.type != file_directory){
         return -1;
@@ -289,7 +292,7 @@ uint64_t createfileindir(struct file* n, char* name){
         }
         uint64_t newindex = n->inode.size / 512;
         n->inode.addr[newindex] = pageno;
-        writeinode(n->inodenum, &(n->inode));
+        setinode(n->inodenum, &(n->inode));
     }
     uint64_t childnum = n->inode.size / 64;
     uint64_t blockno = childnum / 32;
@@ -300,18 +303,30 @@ uint64_t createfileindir(struct file* n, char* name){
     struct dirent* d = ((struct dirent*)buf) + blockoff;
     d->inodenum = inodenum;
     strncopy(d->name, name, 12);
-    writeblock(n->inode.addr[blockno], buf);
+    setblock(n->inode.addr[blockno], buf);
     return inodenum;
 }
 void truncfile(uint64_t inodenum){
     struct inode node = getinode(inodenum);
     uint64_t blocknum = (node.size + 511) / 512;
-    assert(blocknum <= 14);
-    for(uint64_t i = 0; i < blocknum; i++){
-        bitmapsetunused(1 + sb.bitmapblock + sb.inodeblocks + node.addr[i]);
+    if(blocknum <= 13){
+        for(uint64_t i = 0; i < blocknum; i++){
+            freeblock(node.addr[i]);
+        }
+    }else{
+        for(uint64_t i = 0; i < 13; i++){
+            freeblock(node.addr[i]);
+        }
+        char buf[512];
+        getblock(node.addr[13], buf);
+        uint32_t* c = (uint32_t*)buf;
+        for(uint64_t i = 13; i < blocknum; i++){
+            freeblock(c[i - 13]);
+        }
+        freeblock(node.addr[13]);
     }
     node.size = 0;
-    writeinode(inodenum, &node);
+    setinode(inodenum, &node);
 }
 int64_t fileopen(char* name, uint64_t flags){
     int64_t ret = -1;
@@ -396,6 +411,7 @@ int64_t fileopen(char* name, uint64_t flags){
         f->inode = getinode(inodenum);
         f->ref = 0;
         f->parent = fn;
+        f->inodenum = inodenum;
     }
     f->ref++;
     assert(f->parent == fn);
@@ -407,6 +423,7 @@ int64_t fileopen(char* name, uint64_t flags){
     cpu->thread->proc->pfdtable[ret] = fd;
     if(flag_trunc){
         truncfile(inodenum);
+        f->inode = getinode(f->inodenum);
     }
     release(&fslock);
     return ret;
@@ -446,6 +463,14 @@ void readblock(uint64_t blockno, uint64_t off, uint64_t size, char* buf){
         buf[i] = block[off + i];
     }
 }
+void writeblock(uint64_t blockno, uint64_t off, uint64_t size, char* buf){
+    char block[512];
+    getblock(blockno, block);
+    for(uint64_t i = 0; i < size; i++){
+        block[off + i] = buf[i];
+    }
+    setblock(blockno, block);
+}
 uint64_t getblockptr(struct file* f, uint64_t no){
     if(no < 13){
         return f->inode.addr[no];
@@ -454,6 +479,45 @@ uint64_t getblockptr(struct file* f, uint64_t no){
         getblock(f->inode.addr[13], block);
         return *(((uint32_t*)block) + (no - 13));
     }
+}
+int64_t addblock(struct file* f){
+    assert(f->inode.size % 512 == 0);
+    if(f->inode.size / 512 == 13){
+        int64_t ptrblock = allocblock();
+        if(ptrblock < 0){
+            return -1;
+        }
+        int64_t block = allocblock();
+        if(block < 0){
+            freeblock(block);
+            return -1;
+        }
+        f->inode.addr[13] = ptrblock;
+        setinode(f->inodenum, &(f->inode));
+        char buf[512];
+        getblock(ptrblock, buf);
+        uint32_t* c = (uint32_t*)buf;
+        c[0] = (uint32_t)block;
+        setblock(ptrblock, buf);
+    }else if(f->inode.size / 512 < 13){
+        int64_t block = allocblock();
+        if(block < 0){
+            return -1;
+        }
+        f->inode.addr[f->inode.size / 512] = block;
+        setinode(f->inodenum, &(f->inode));
+    }else if(f->inode.size / 512 < 13 + 128){
+        int64_t block = allocblock();
+        if(block < 0){
+            return -1;
+        }
+        char buf[512];
+        getblock(f->inode.addr[13], buf);
+        uint32_t* c = (uint32_t*)buf;
+        c[f->inode.size / 512 - 13] = block;
+        setblock(f->inode.addr[13], buf);
+    }
+    return 0;
 }
 int64_t fileread(uint64_t fdn, char* buf, uint64_t size){
     if(fdn >= 16){
@@ -482,6 +546,49 @@ int64_t fileread(uint64_t fdn, char* buf, uint64_t size){
         fd->off += bsize;
         ret += bsize;
     }
+    release(&fslock);
+    return ret;
+}
+int64_t filewrite(uint64_t fdn, char* buf, uint64_t size){
+    if(fdn >= 16){
+        return -1;
+    }
+    int64_t ret = 0;
+    acquire(&fslock);
+    struct filedescriptor* fd = cpu->thread->proc->pfdtable[fdn];
+    if(fd == 0){
+        release(&fslock);
+        return -1;
+    }
+    if(!(fd->writable) || fd->off > fd->fnode->inode.size){
+        release(&fslock);
+        return -1;
+    }
+    struct file* f = fd->fnode;
+    uint64_t writend = fd->off + size;
+    while(fd->off < writend){
+        uint64_t block = fd->off / 512;
+        uint64_t blockoff = fd->off - block * 512;
+        uint64_t bsize = (size > 512 - blockoff) ? 512 - blockoff : size;
+        if(fd->off % 512 == 0 && fd->off == fd->fnode->inode.size){
+            int64_t ret = addblock(f);
+            if(ret < 0){
+                printf("block not enough\n");
+                release(&fslock);
+                return ret;
+            }
+        }
+        writeblock(getblockptr(f, block), blockoff, bsize, buf);
+        size -= bsize;
+        buf += bsize;
+        fd->off += bsize;
+        ret += bsize;
+        if(fd->off > fd->fnode->inode.size){
+            fd->fnode->inode.size = fd->off;
+            setinode(fd->fnode->inodenum, &(fd->fnode->inode));
+        }
+    }
+    printf("write end size = %d\n", fd->fnode->inode.size);
     release(&fslock);
     return ret;
 }

@@ -57,7 +57,7 @@ out/kernel.elf: $(OBJS) kernel/kernel.ld out/entrymp out/entrymp64 $(UPROGRAMS)
 	ld $(LDFLAGS) -T kernel/kernel.ld -o out/kernel.elf $(OBJS) -b binary out/entrymp out/entrymp64 $(UPROGRAMS)
 	objdump -S out/kernel.elf > out/kernel.asm
 	objdump -t out/kernel.elf | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > out/kernel.sym
-fs.img: tools/makefs.c
+fs.img: tools/makefs.c user/hello.c LICENSE.txt
 	gcc tools/makefs.c -o out/makefs
 	out/makefs
 clean: 
@@ -66,7 +66,7 @@ ifndef CPUS
 CPUS := 4
 endif
 QEMUOPTS = -net none -drive file=kernel.img,index=0,media=disk,format=raw -drive file=fs.img,index=1,media=disk,format=raw -smp $(CPUS) -m 1024
-qemu: kernel.img
+qemu: kernel.img fs.img
 	$(QEMU) -serial mon:stdio -nographic $(QEMUOPTS)
-debug: kernel.img
+debug: kernel.img fs.img
 	$(QEMU) -serial mon:stdio -s -S -nographic $(QEMUOPTS)

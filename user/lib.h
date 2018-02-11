@@ -27,4 +27,5 @@ uint64_t sleep(uint64_t tick);
 uint64_t open(char* name, uint64_t flag);
 uint64_t close(uint64_t fd);
 uint64_t read(uint64_t fd, char* buf, uint64_t size);
+uint64_t write(uint64_t fd, char* buf, uint64_t size);
 uint64_t put(char s);
