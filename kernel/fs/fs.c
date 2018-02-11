@@ -6,6 +6,7 @@
 #include<debug/debug.h>
 #include<mm/malloc.h>
 #include<proc/cpu.h>
+#include<dev/console.h>
 struct superblock sb;
 struct file{
     struct inode inode;
@@ -87,7 +88,7 @@ void writeblock(uint64_t pagenum, char* buf){
     writesect((uint64_t)buf, no);
 }
 uint64_t allocblock(){
-    uint64_t no = bitmapgetfreeblock(1 + sb.bitmapblock + sb.inodeblocks, 1 + sb.bitmapblock + sb.inodeblocks + sb.datablocks);
+    int64_t no = bitmapgetfreeblock(1 + sb.bitmapblock + sb.inodeblocks, 1 + sb.bitmapblock + sb.inodeblocks + sb.datablocks);
     if(no < 0){
         return -1;
     }
@@ -95,7 +96,7 @@ uint64_t allocblock(){
     return no - 1 - sb.bitmapblock - sb.inodeblocks;
 }
 uint64_t allocinode(enum filetype type){
-    uint64_t freeblocknum = bitmapgetfreeblock(1 + sb.bitmapblock, 1 + sb.bitmapblock + sb.inodeblocks);
+    int64_t freeblocknum = bitmapgetfreeblock(1 + sb.bitmapblock, 1 + sb.bitmapblock + sb.inodeblocks);
     if(freeblocknum < 0){
         return -1;
     }
@@ -281,7 +282,7 @@ uint64_t createfileindir(struct file* n, char* name){
         return -1;
     }
     if(n->inode.size % 512 == 0){
-        uint64_t pageno = allocblock();
+        int64_t pageno = allocblock();
         if(pageno < 0){
             freeinode(inodenum);
             return -1;
@@ -315,7 +316,6 @@ void truncfile(uint64_t inodenum){
 int64_t fileopen(char* name, uint64_t flags){
     int64_t ret = -1;
     acquire(&fslock);
-    printf("name: %s, flag: %d\n", name, flags);
     uint64_t flag_read = flags & 1;
     uint64_t flag_write = (flags & 2) >> 1;
     uint64_t flag_trunc = (flags & 4) >> 2;
@@ -346,7 +346,7 @@ int64_t fileopen(char* name, uint64_t flags){
         freefiledescriptor(fd);
         release(&fslock);
         return -1;
-    }
+    } 
     char namebuf[20];
     uint64_t namestart = 0;
     uint64_t ptr = 0;
@@ -359,8 +359,8 @@ int64_t fileopen(char* name, uint64_t flags){
     for(ptr = namestart; name[ptr] != 0; ptr++){
         namebuf[ptr - namestart] = name[ptr];
     }
-    namebuf[ptr] = 0;
-    uint64_t inodenum = finditemindirectory(fn, namebuf);
+    namebuf[ptr - namestart] = 0;
+    int64_t inodenum = finditemindirectory(fn, namebuf);
     if(inodenum < 0 && flag_write){
         inodenum = createfileindir(fn, namebuf);
     }
@@ -413,7 +413,7 @@ int64_t fileopen(char* name, uint64_t flags){
 }
 int64_t fileclose(uint64_t fdn){
     acquire(&fslock);
-    if(fdn < 0 || fdn >= 16){
+    if(fdn >= 16){
         release(&fslock);
         return -1;
     }
@@ -438,6 +438,52 @@ int64_t fileclose(uint64_t fdn){
     cpu->thread->proc->pfdtable[fdn] = 0;
     release(&fslock);
     return 0;
+}
+void readblock(uint64_t blockno, uint64_t off, uint64_t size, char* buf){
+    char block[512];
+    getblock(blockno, block);
+    for(uint64_t i = 0; i < size; i++){
+        buf[i] = block[off + i];
+    }
+}
+uint64_t getblockptr(struct file* f, uint64_t no){
+    if(no < 13){
+        return f->inode.addr[no];
+    }else{
+        char block[512];
+        getblock(f->inode.addr[13], block);
+        return *(((uint32_t*)block) + (no - 13));
+    }
+}
+int64_t fileread(uint64_t fdn, char* buf, uint64_t size){
+    if(fdn >= 16){
+        return -1;
+    }
+    int64_t ret = 0;
+    acquire(&fslock);
+    struct filedescriptor* fd = cpu->thread->proc->pfdtable[fdn];
+    if(fd == 0){
+        release(&fslock);
+        return -1;
+    }
+    if(!(fd->readable)){
+        release(&fslock);
+        return -1;
+    }
+    struct file* f = fd->fnode;
+    uint64_t readend = (fd->off + size > fd->fnode->inode.size) ? fd->fnode->inode.size : fd->off + size;
+    while(fd->off < readend){
+        uint64_t block = fd->off / 512;
+        uint64_t blockoff = fd->off - block * 512;
+        uint64_t bsize = (size > 512 - blockoff) ? 512 - blockoff : size;
+        readblock(getblockptr(f, block), blockoff, bsize, buf);
+        size -= bsize;
+        buf += bsize;
+        fd->off += bsize;
+        ret += bsize;
+    }
+    release(&fslock);
+    return ret;
 }
 void fsinit(){
     sb = readsuperblock();

@@ -39,10 +39,20 @@ uint64_t open(char* name, uint64_t flag){
 uint64_t close(uint64_t fd){
     return syscall(12, fd, 0, 0, 0, 0);
 }
-uint64_t put(char s){
-    return syscall(13, (uint64_t)s, 0, 0, 0, 0);
+uint64_t read(uint64_t fd, char* buf, uint64_t size){
+    return syscall(13, fd, (uint64_t)buf, size, 0, 0);
 }
-static void printnum(uint64_t num, uint64_t base){
+uint64_t write(uint64_t fd, char* buf, uint64_t size){
+    return syscall(14, fd, (uint64_t)buf, size, 0, 0);
+}
+uint64_t put(char s){
+    return syscall(15, (uint64_t)s, 0, 0, 0, 0);
+}
+static void printnum(int64_t num, uint64_t base){
+    if(num < 0 && base == 10){
+        put('-');
+        num = -num;
+    }
     char digits[17] = "0123456789abcdef";
     uint64_t buf[20] = {0};
     for(int64_t i = 0; i < 20; i++){

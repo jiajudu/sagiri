@@ -4,7 +4,11 @@
 #include<sync/spinlock.h>
 #include<proc/cpu.h>
 static struct spinlock printflock;
-static void printnum(uint64_t num, uint64_t base){
+static void printnum(int64_t num, uint64_t base){
+    if(num < 0 && base == 10){
+        consoleput('-');
+        num = -num;
+    }
     char digits[17] = "0123456789abcdef";
     uint64_t buf[20] = {0};
     for(int64_t i = 0; i < 20; i++){

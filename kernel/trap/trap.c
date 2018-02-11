@@ -45,6 +45,7 @@ void interrupt(struct trapframe* tf){
         case 14: { //缺页异常
             uint64_t addr = rcr2();
             if(addr > 0x800000000000){
+                printf("addr = %x, err = %d, rip = %x\n", addr, tf->err, tf->rip);
                 panic("kernel page fault");
             }
             pagefault(addr, tf->err, tf);

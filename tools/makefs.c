@@ -93,11 +93,13 @@ void adddir(){
     struct inode* filenode = addfile("uobj/hello.exe");
     struct dirent* d = (struct dirent*)(content + 16 * 0);
     strcpy(d->name, "hello");
+    d->name[5] = 0;
     d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
     dinode->size += 16;
     filenode = addfile("license.txt");
     d = (struct dirent*)(content + 16 * 1);
     strcpy(d->name, "license");
+    d->name[7] = 0;
     d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
     dinode->size += 16;
 }

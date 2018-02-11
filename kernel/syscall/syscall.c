@@ -63,6 +63,12 @@ uint64_t sys_open(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, ui
 uint64_t sys_close(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
     return fileclose(arg0);
 }
+uint64_t sys_read(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
+    return fileread(arg0, (char*)arg1, arg2);
+}
+uint64_t sys_write(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
+    return filewrite(arg0, (char*)arg1, arg2);
+}
 uint64_t sys_put(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
     consoleput(arg0);
     return arg1;
@@ -81,6 +87,8 @@ uint64_t (*systable[32])(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t) = {
     sys_sleep,
     sys_open,
     sys_close,
+    sys_read,
+    sys_write,
     sys_put
 };
 void syscall(struct syscallframe* sf){
