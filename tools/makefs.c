@@ -50,7 +50,7 @@ void writesuperblock(){
 }
 struct inode* addfile(char* name){
     struct inode* finode = getinode();
-    finode->type = 0;
+    finode->type = 1;
     struct stat statbuf;
     stat(name, &statbuf);
     finode->size = statbuf.st_size;
@@ -85,7 +85,7 @@ struct inode* addfile(char* name){
 }
 void adddir(){
     struct inode* dinode = getinode();
-    dinode->type = 1;
+    dinode->type = 2;
     dinode->size = 0;
     char* content = getdatablock();
     int datablockno = (content - data - 1004 * 512) / 512;
@@ -93,6 +93,11 @@ void adddir(){
     struct inode* filenode = addfile("uobj/hello.exe");
     struct dirent* d = (struct dirent*)(content + 16 * 0);
     strcpy(d->name, "hello");
+    d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
+    dinode->size += 16;
+    filenode = addfile("license.txt");
+    d = (struct dirent*)(content + 16 * 1);
+    strcpy(d->name, "license");
     d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
     dinode->size += 16;
 }

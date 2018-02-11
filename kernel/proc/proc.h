@@ -22,6 +22,7 @@ struct proc{
     uint64_t killed;
     struct spinlock pgdirlock;
     struct waiter exitwaiter;
+    struct filedescriptor* pfdtable[16];
 };
 struct thread{
     uint64_t tid;

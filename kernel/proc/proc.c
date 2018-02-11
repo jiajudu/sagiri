@@ -71,6 +71,9 @@ int64_t allocthread(uint64_t newproc){
             free((uint64_t)pgdir);
             return -1;
         }
+        for(uint64_t i = 0; i < 16; i++){
+            p->pfdtable[i] = 0;
+        }
     }else{
         p = cpu->thread->proc;
     }
@@ -256,6 +259,9 @@ void cleanproc(struct proc* proc){
     proc->killed = 0;
     proc->exitwaiter.space = 0;
     proc->pgdirlock.lock = 0;
+    for(uint64_t i = 0; i < 16; i++){
+        proc->pfdtable[i] = 0;
+    }
 }
 void cleanthread(struct thread* t){
     t->proc = 0;
@@ -430,6 +436,9 @@ void procinit(){
         procs[i].killed = 0;
         procs[i].exitwaiter.space = 0;
         procs[i].pgdirlock.lock = 0;
+        for(uint64_t j = 0; j < 16; j++){
+            procs[i].pfdtable[j] = 0;
+        }
     }
     setidleprocess();
     createthread(firstthread, 0, 1);

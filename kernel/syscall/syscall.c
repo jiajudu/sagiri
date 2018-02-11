@@ -5,6 +5,7 @@
 #include<dev/console.h>
 #include<debug/debug.h>
 #include<proc/cpu.h>
+#include<fs/fs.h>
 void sysenter();
 uint64_t sys_fork(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
     return fork();
@@ -56,6 +57,9 @@ uint64_t sys_sleep(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, u
     sleep(arg0 * cpuno);
     return 0;
 }
+uint64_t sys_open(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
+    return fileopen((char*)arg0, arg1);
+}
 uint64_t sys_put(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
     consoleput(arg0);
     return arg1;
@@ -72,6 +76,7 @@ uint64_t (*systable[32])(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t) = {
     sys_killproc,
     sys_killthread,
     sys_sleep,
+    sys_open,
     sys_put
 };
 void syscall(struct syscallframe* sf){

@@ -33,8 +33,11 @@ uint64_t killthread(uint64_t tid){
 uint64_t sleep(uint64_t tick){
     return syscall(10, tick, 0, 0, 0, 0);
 }
+uint64_t open(char* name, uint64_t flag){
+    return syscall(11, (uint64_t)name, flag, 0, 0, 0);
+}
 uint64_t put(char s){
-    return syscall(11, (uint64_t)s, 0, 0, 0, 0);
+    return syscall(12, (uint64_t)s, 0, 0, 0, 0);
 }
 static void printnum(uint64_t num, uint64_t base){
     char digits[17] = "0123456789abcdef";
