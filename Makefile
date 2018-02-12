@@ -53,11 +53,11 @@ out/entrymp64: kernel/init/entrymp64.S
 	ld -m elf_x86_64 -nodefaultlibs -N -e start -Ttext 0x7200 -o out/entrymp64block.o out/entrymp64.o
 	objdump -S out/entrymp64block.o > out/entrymp64block.asm
 	objcopy -S -O binary -j .text out/entrymp64block.o out/entrymp64
-out/kernel.elf: $(OBJS) kernel/kernel.ld out/entrymp out/entrymp64 $(UPROGRAMS)
-	ld $(LDFLAGS) -T kernel/kernel.ld -o out/kernel.elf $(OBJS) -b binary out/entrymp out/entrymp64 $(UPROGRAMS)
+out/kernel.elf: $(OBJS) kernel/kernel.ld out/entrymp out/entrymp64
+	ld $(LDFLAGS) -T kernel/kernel.ld -o out/kernel.elf $(OBJS) -b binary out/entrymp out/entrymp64
 	objdump -S out/kernel.elf > out/kernel.asm
 	objdump -t out/kernel.elf | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > out/kernel.sym
-fs.img: tools/makefs.c user/hello.c LICENSE.txt
+fs.img: tools/makefs.c $(UPROGRAMS) LICENSE.txt
 	gcc tools/makefs.c -o out/makefs
 	out/makefs
 clean: 

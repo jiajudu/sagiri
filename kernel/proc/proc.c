@@ -11,6 +11,7 @@
 #include<trap/trap.h>
 #include<syscall/syscall.h>
 #include<lib/elf.h>
+#include<fs/fs.h>
 struct context{
     uint64_t r15;
     uint64_t r14;
@@ -157,6 +158,9 @@ int64_t fork(){
     p->parent = cpu->thread->proc;
     t->state = thread_runnable;
     int64_t ret = p->pid;
+    for(uint64_t i = 0; i < 16; i++){
+        p->pfdtable[i] = cpu->thread->proc->pfdtable[i];
+    }
     release(&ptablelock);
     return ret;
 }
@@ -214,7 +218,19 @@ void exitthread(int64_t retvalue){
         }
     }
     if(exitproc){
+        release(&ptablelock);
+        for(uint64_t i = 0; i < 16; i++){
+            if(cpu->thread->proc->pfdtable[i] != 0){
+                fileclose(i);
+            }
+        }
+        acquire(&ptablelock);
         cpu->thread->proc->state = proc_zombie;
+        for(uint64_t i = 0; i < 256; i++){
+            if(procs[i].parent == cpu->thread->proc){
+                procs[i].parent = &(procs[0]);
+            }
+        }
         clearusermem();
         for(uint64_t i = 0; i < 256; i++){
             if(threads[i].waiter == &(cpu->thread->proc->exitwaiter)){
@@ -312,11 +328,19 @@ int64_t waitthread(int64_t tid, int64_t* retp){
     release(&ptablelock);
     return tid;
 }
+void setkill(uint64_t pid){
+    procs[pid].killed = 1;
+    for(uint64_t i = 0; i < 256; i++){
+        if(procs[i].parent == &(procs[pid])){
+            setkill(i);
+        }
+    }
+}
 int64_t killproc(uint64_t pid){
     int64_t ret = 0;
     acquire(&ptablelock);
     if(pid != 0){
-        procs[pid].killed = 1;
+        setkill(pid);
     }else{
         ret = -1;
     }
@@ -377,18 +401,50 @@ void proctick(){
     }
     release(&ptablelock);
 }
-uint64_t firstthread(void* args){
-    extern char _binary_uobj_hello_exe_start[];
-    struct elfhdr* header = (struct elfhdr*)_binary_uobj_hello_exe_start;
-    if(header->magic != 0x464c457f){
-        panic("elf magic error");
+int64_t exec(char* name, uint64_t* args){
+    int64_t fd = fileopen(name, 1);
+    if(fd < 0){
+        return -1;
     }
-    struct proghdr* ph = (struct proghdr*)((uint64_t)header + header->phoff);
-    struct proghdr* eph = ph + header->phnum;
+    uint64_t tmp = alloc();
+    if(tmp == 0){
+        fileclose(fd);
+        return -1;
+    }
+    uint64_t totalspace = 0;
+    uint64_t argnum = 0;
+    for(uint64_t i = 0; args[i] != 0; i++){
+        argnum++;
+        totalspace += (strlen((char*)args[i]) + 1);
+    }
+    char* argstart = (char*)tmp + 0xfe0 - totalspace;
+    uint64_t* argpstart = (uint64_t*)(((uint64_t)argstart & 0xfffffffffffffff0) - 8 * argnum);
+    for(uint64_t i = 0; args[i] != 0; i++){
+        argpstart[i] = (uint64_t)argstart - tmp + 0x7ffffffff000;
+        memcopy(argstart, (char*)(args[i]), strlen((char*)(args[i])) + 1);
+        argstart += (strlen((char*)(args[i])) + 1);
+    }
+    for(uint64_t i = 0; i < 256; i++){
+        if(threads[i].proc == cpu->thread->proc && cpu->thread != &(threads[i])){
+            threads[i].killed = 1;
+            int64_t ret = 0;
+            waitthread(i, &ret);
+        }
+    }
+    clearusermem();
+    struct elfhdr header;
+    fileread(fd, (char*)&header, sizeof(struct elfhdr));
+    if(header.magic != 0x464c457f){
+        fileclose(fd);
+        return -1;
+    }
     uint64_t maxaddr = 0x400000;
-    for(; ph < eph; ph++){
-        if(ph->memsz > 0){
-            uint64_t phmaxaddr = (ph->va + ph->memsz + 4095) / 4096 * 4096;
+    for(uint64_t i = 0; i < header.phnum; i++){
+        struct proghdr ph;
+        fileseek(fd, header.phoff + i * sizeof(struct proghdr), 0);
+        fileread(fd, (char*)&ph, sizeof(ph));
+        if(ph.memsz > 0){
+            uint64_t phmaxaddr = (ph.va + ph.memsz + 4095) / 4096 * 4096;
             if(phmaxaddr > maxaddr){
                 maxaddr = phmaxaddr;
             }
@@ -397,17 +453,39 @@ uint64_t firstthread(void* args){
     cpu->thread->proc->heaptop = maxaddr;
     cpu->thread->proc->stacktop = 0x800000000000 - 0x8000;
     cpu->thread->ustack = 0;
-    ph = (struct proghdr*)((uint64_t)header + header->phoff);
-    for(; ph < eph; ph++){
-        if(ph->memsz > 0){
-            memcopy((char*)ph->va, (char*)((uint64_t)_binary_uobj_hello_exe_start + ph->offset), ph->memsz);
+    for(uint64_t i = 0; i < header.phnum; i++){
+        struct proghdr ph;
+        fileseek(fd, header.phoff + i * sizeof(struct proghdr), 0);
+        fileread(fd, (char*)&ph, sizeof(ph));
+        if(ph.memsz > 0){
+            fileseek(fd, ph.offset, 0);
+            fileread(fd, (char*)ph.va, ph.memsz);
         }
     }
+    fileclose(fd);
+    memcopy((char*)0x7ffffffff000, (char*)tmp, 4096);
+    free(tmp);
     struct syscallframe sf;
-    sf.rcx = header->entry;
-    sf.r10 = 0x00007fffffffffe0;
+    sf.rcx = header.entry;
+    sf.r10 = (uint64_t)argpstart - tmp + 0x7ffffffff000;
     sf.r11 = readeflags();
+    sf.rdi = argnum;
+    sf.rsi = (uint64_t)argpstart - tmp + 0x7ffffffff000;
     switchtouser(&sf);
+    return 0;
+}
+uint64_t firstthread(){
+    char* arg0 = "/hello";
+    char* arg1 = "ksp";
+    char* arg2 = "bsesw";
+    char* arg3 = "/license";
+    uint64_t args[5];
+    args[0] = (uint64_t)arg0;
+    args[1] = (uint64_t)arg1;
+    args[2] = (uint64_t)arg2;
+    args[3] = (uint64_t)arg3;
+    args[4] = 0;
+    exec("/hello", args);
     return 0;
 }
 void procinit(){

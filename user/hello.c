@@ -1,6 +1,10 @@
 #include<lib.h>
-int64_t main(){
+int64_t main(int64_t argc, char** argv){
     printf("Hello World!\n");
+    printf("argc = %d\n", argc);
+    for(uint64_t i = 0; i < argc; i++){
+        printf("arg %d: %s\n", i, argv[i]);
+    }
     struct dircontent con;
     int64_t dirret = readdir("/", &con);
     printf("dirret = %d\n", dirret);
