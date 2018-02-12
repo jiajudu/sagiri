@@ -1,5 +1,5 @@
 OBJS = kobj/main.o kobj/entry.o kobj/stdio.o kobj/console.o kobj/uart.o kobj/mm.o kobj/string.o kobj/debug.o kobj/acpi.o kobj/lapic.o kobj/seg.o kobj/vectors.o kobj/trap.o kobj/trapasm.o kobj/ioapic.o kobj/cpu.o kobj/malloc.o kobj/vm.o kobj/spinlock.o kobj/proc.o kobj/kthread.o kobj/switch.o kobj/schedule.o kobj/syscall.o kobj/sysenter.o kobj/ide.o kobj/fs.o
-UPROGRAMS = uobj/hello.exe
+UPROGRAMS = uobj/hello.exe uobj/echo.exe
 QEMU = qemu-system-x86_64
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -Wall -MD -ggdb -fno-omit-frame-pointer -ffreestanding -fno-common -nostdlib -gdwarf-2 -m64 -DX64 -mcmodel=large -mtls-direct-seg-refs -mno-red-zone -fno-stack-protector
 LDFLAGS = -m elf_x86_64 -nodefaultlibs

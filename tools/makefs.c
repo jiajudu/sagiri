@@ -102,6 +102,12 @@ void adddir(){
     d->name[7] = 0;
     d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
     dinode->size += 16;
+    filenode = addfile("uobj/echo.exe");
+    d = (struct dirent*)(content + 16 * 2);
+    strcpy(d->name, "echo");
+    d->name[4] = 0;
+    d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
+    dinode->size += 16;
 }
 int main(){
     writesuperblock();

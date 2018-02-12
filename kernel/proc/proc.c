@@ -402,6 +402,7 @@ void proctick(){
     release(&ptablelock);
 }
 int64_t exec(char* name, uint64_t* args){
+    printf("exec: %s\n", name);
     int64_t fd = fileopen(name, 1);
     if(fd < 0){
         return -1;
@@ -475,7 +476,7 @@ int64_t exec(char* name, uint64_t* args){
     return 0;
 }
 uint64_t firstthread(){
-    char* arg0 = "/hello";
+    char* arg0 = "/echo";
     char* arg1 = "ksp";
     char* arg2 = "bsesw";
     char* arg3 = "/license";
@@ -485,7 +486,7 @@ uint64_t firstthread(){
     args[2] = (uint64_t)arg2;
     args[3] = (uint64_t)arg3;
     args[4] = 0;
-    exec("/hello", args);
+    exec("/echo", args);
     return 0;
 }
 void procinit(){

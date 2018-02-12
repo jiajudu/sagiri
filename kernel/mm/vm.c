@@ -118,6 +118,9 @@ void pagefault(uint64_t addr, uint64_t err, struct trapframe* tf){
         invlpg(addr);
     }else{
         release(&(cpu->thread->proc->pgdirlock));
+        printf("heaptop = %x\n", cpu->thread->proc->heaptop);
+        printf("stacktop = %x\n", cpu->thread->proc->stacktop);
+        printf("addr = %x\n", addr);
         printtrapframe(tf);
         printf("killed.\n");
         exitproc(-1);
@@ -140,6 +143,8 @@ void clearusermem(){
                 free(p2k(pa));
             }
         }
+        *pte = 0;
+        invlpg(p);
     }
     for(uint64_t p = cpu->thread->proc->stacktop; p < 0x800000000000; p += 0x1000){
         uint64_t* pte = getptepointer(cpu->thread->proc->pgdir, p);
@@ -151,7 +156,11 @@ void clearusermem(){
                 free(p2k(pa));
             }
         }
+        *pte = 0;
+        invlpg(p);
     }
+    cpu->thread->proc->heaptop = 0x400000;
+    cpu->thread->proc->stacktop = 0x800000000000;
     release(&pagereflock);
     release(&(cpu->thread->proc->pgdirlock));
 }

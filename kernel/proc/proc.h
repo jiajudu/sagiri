@@ -52,6 +52,7 @@ int64_t waitproc(int64_t pid, int64_t* retp);
 int64_t waitthread(int64_t tid, int64_t* retp);
 int64_t killproc(uint64_t pid);
 int64_t killthread(uint64_t tid);
+int64_t exec(char* name, uint64_t* args);
 void sleep(uint64_t ticks);
 extern struct proc procs[128];
 extern struct thread threads[256];
