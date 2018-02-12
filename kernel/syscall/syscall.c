@@ -78,13 +78,16 @@ uint64_t sys_readdir(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3,
 uint64_t sys_stat(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
     return filestat((char*)arg0, (struct stat*)arg1);
 }
+uint64_t sys_mkdir(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
+    return filemkdir((char*)arg0);
+}
 uint64_t sys_put(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
     consoleput(arg0);
     return arg1;
 }
 uint64_t (*systable[32])(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t) = {
     sys_fork, sys_exit, sys_thread, sys_threadexit, sys_waitproc, sys_waitthread, sys_getpid, sys_gettid, sys_killproc, sys_killthread, sys_sleep,
-    sys_open, sys_close, sys_read, sys_write, sys_unlink, sys_readdir, sys_stat,
+    sys_open, sys_close, sys_read, sys_write, sys_unlink, sys_readdir, sys_stat, sys_mkdir,
     sys_put
 };
 void syscall(struct syscallframe* sf){

@@ -34,3 +34,4 @@ int64_t filewrite(uint64_t fdn, char* buf, uint64_t size);
 int64_t fileunlink(char* name);
 int64_t filereaddir(char* name, struct dircontent* buf);
 int64_t filestat(char* name, struct stat* buf);
+int64_t filemkdir(char* name);

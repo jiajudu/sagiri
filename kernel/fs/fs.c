@@ -89,7 +89,7 @@ int64_t allocinode(enum filetype type){
     struct inode* node = (struct inode*)buf;
     uint64_t off = -1;
     for(uint64_t i = 0; i < 8; i++){
-        if(node[i].type != file_unused){
+        if(node[i].type == file_unused){
             off = i;
             break;
         }
@@ -107,6 +107,7 @@ int64_t allocinode(enum filetype type){
     if(!hasfree){
         bitmapsetused(freeblocknum);
     }
+    writesect((uint64_t)buf, freeblocknum);
     return (freeblocknum - 1 - sb.bitmapblock) * 8 + off;
 }
 void freeinode(uint64_t no){
@@ -274,12 +275,12 @@ struct file* getparentinode(char* name){
     }
     return cur;
 }
-int64_t createfileindir(struct file* n, char* name){
+int64_t createfileindir(struct file* n, char* name, uint64_t type){
     assert(strlen(name) <= 12);
     if(n->inode.type != file_directory){
         return -1;
     }
-    uint64_t inodenum = allocinode(file_file);
+    uint64_t inodenum = allocinode(type);
     if(n->inode.size == 14 * 512){
         freeinode(inodenum);
         return -1;
@@ -292,12 +293,12 @@ int64_t createfileindir(struct file* n, char* name){
         }
         uint64_t newindex = n->inode.size / 512;
         n->inode.addr[newindex] = pageno;
-        setinode(n->inodenum, &(n->inode));
     }
     uint64_t childnum = n->inode.size / 16;
     uint64_t blockno = childnum / 32;
     uint64_t blockoff = childnum % 32;
     n->inode.size += 16;
+    setinode(n->inodenum, &(n->inode));
     char buf[512];
     getblock(n->inode.addr[blockno], buf);
     struct dirent* d = ((struct dirent*)buf) + blockoff;
@@ -411,7 +412,7 @@ int64_t fileopen(char* name, uint64_t flags){
     namebuf[ptr - namestart] = 0;
     int64_t inodenum = finditemindirectory(fn, namebuf);
     if(inodenum < 0 && flag_write){
-        inodenum = createfileindir(fn, namebuf);
+        inodenum = createfileindir(fn, namebuf, file_file);
     }
     if(inodenum < 0){
         while(fn != 0){
@@ -432,7 +433,7 @@ int64_t fileopen(char* name, uint64_t flags){
         if(f == 0){
             while(fn != 0){
                 fn->ref--;
-                struct file* pa = f->parent;
+                struct file* pa = fn->parent;
                 if(fn->ref == 0){
                     freefile(fn);
                 }
@@ -778,10 +779,66 @@ int64_t filestat(char* name, struct stat* buf){
             release(&fslock);
             return -1;
         }
+        printf("namebuf: %s, inodenum = %d\n", namebuf, inodenum);
         struct inode c = getinode(inodenum);
         buf->size = c.size;
         buf->type = c.type;
     }
+    while(fn != 0){
+        fn->ref--;
+        struct file* pa = fn->parent;
+        if(fn->ref == 0){
+            freefile(fn);
+        }
+        fn = pa;
+    }
+    release(&fslock);
+    return 0;
+}
+int64_t filemkdir(char* name){
+    if(strlen(name) >= 100){
+        return -1;
+    }
+    char cnamebuf[128];
+    strncopy(cnamebuf, name, 101);
+    uint64_t len = strlen(cnamebuf);
+    if(cnamebuf[0] != '/' || len == 0 || cnamebuf[len - 1] != '/'){
+        return -1;
+    }
+    cnamebuf[len - 1] = 0;
+    acquire(&fslock);
+    struct file* fn = getparentinode(cnamebuf);
+    if(fn == 0){
+        release(&fslock);
+        return -1;
+    }
+    char namebuf[20];
+    uint64_t namestart = 0;
+    uint64_t ptr = 0;
+    while(cnamebuf[ptr] != 0){
+        if(cnamebuf[ptr] == '/'){
+            namestart = ptr + 1;
+        }
+        ptr++;
+    }
+    for(ptr = namestart; cnamebuf[ptr] != 0; ptr++){
+        namebuf[ptr - namestart] = cnamebuf[ptr];
+    }
+    namebuf[ptr - namestart] = 0;
+    int64_t inodenum = finditemindirectory(fn, namebuf);
+    if(inodenum >= 0){
+        while(fn != 0){
+            fn->ref--;
+            struct file* pa = fn->parent;
+            if(fn->ref == 0){
+                freefile(fn);
+            }
+            fn = pa;
+        }
+        release(&fslock);
+        return -1;
+    }
+    inodenum = createfileindir(fn, namebuf, file_directory);
     while(fn != 0){
         fn->ref--;
         struct file* pa = fn->parent;
