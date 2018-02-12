@@ -57,8 +57,11 @@ uint64_t stat(char* name, struct stat* buf){
 uint64_t mkdir(char* name){
     return syscall(18, (uint64_t)name, 0, 0, 0, 0);
 }
+uint64_t rmdir(char* name){
+    return syscall(19, (uint64_t)name, 0, 0, 0, 0);
+}
 uint64_t put(char s){
-    return syscall(19, (uint64_t)s, 0, 0, 0, 0);
+    return syscall(20, (uint64_t)s, 0, 0, 0, 0);
 }
 static void printnum(int64_t num, uint64_t base){
     if(num < 0 && base == 10){

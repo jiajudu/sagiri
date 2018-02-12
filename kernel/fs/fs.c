@@ -779,7 +779,6 @@ int64_t filestat(char* name, struct stat* buf){
             release(&fslock);
             return -1;
         }
-        printf("namebuf: %s, inodenum = %d\n", namebuf, inodenum);
         struct inode c = getinode(inodenum);
         buf->size = c.size;
         buf->type = c.type;
@@ -839,6 +838,87 @@ int64_t filemkdir(char* name){
         return -1;
     }
     inodenum = createfileindir(fn, namebuf, file_directory);
+    while(fn != 0){
+        fn->ref--;
+        struct file* pa = fn->parent;
+        if(fn->ref == 0){
+            freefile(fn);
+        }
+        fn = pa;
+    }
+    release(&fslock);
+    return 0;
+}
+int64_t filermdir(char* name){
+    if(strlen(name) >= 100){
+        return -1;
+    }
+    char cnamebuf[128];
+    strncopy(cnamebuf, name, 101);
+    uint64_t len = strlen(cnamebuf);
+    if(cnamebuf[0] != '/' || len <= 1 || cnamebuf[len - 1] != '/'){
+        return -1;
+    }
+    cnamebuf[len - 1] = 0;
+    acquire(&fslock);
+    struct file* fn = getparentinode(cnamebuf);
+    if(fn == 0){
+        release(&fslock);
+        return -1;
+    }
+    char namebuf[20];
+    uint64_t namestart = 0;
+    uint64_t ptr = 0;
+    while(cnamebuf[ptr] != 0){
+        if(cnamebuf[ptr] == '/'){
+            namestart = ptr + 1;
+        }
+        ptr++;
+    }
+    for(ptr = namestart; cnamebuf[ptr] != 0; ptr++){
+        namebuf[ptr - namestart] = cnamebuf[ptr];
+    }
+    namebuf[ptr - namestart] = 0;
+    int64_t inodenum = finditemindirectory(fn, namebuf);
+    if(inodenum < 0){
+        while(fn != 0){
+            fn->ref--;
+            struct file* pa = fn->parent;
+            if(fn->ref == 0){
+                freefile(fn);
+            }
+            fn = pa;
+        }
+        release(&fslock);
+        return -1;
+    }
+    struct file* f = getfileptrfromnum(inodenum);
+    if(f != 0){
+        while(fn != 0){
+            fn->ref--;
+            struct file* pa = fn->parent;
+            if(fn->ref == 0){
+                freefile(fn);
+            }
+            fn = pa;
+        }
+        release(&fslock);
+        return -1;
+    }
+    struct inode node = getinode(inodenum);
+    if(node.size != 0){
+        while(fn != 0){
+            fn->ref--;
+            struct file* pa = fn->parent;
+            if(fn->ref == 0){
+                freefile(fn);
+            }
+            fn = pa;
+        }
+        release(&fslock);
+        return -1;
+    }
+    removefilefromdir(fn, inodenum);
     while(fn != 0){
         fn->ref--;
         struct file* pa = fn->parent;

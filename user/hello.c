@@ -45,5 +45,15 @@ int64_t main(){
     printf("statret = %d, type = %d, size = %d\n", statret, s.type, s.size);
     statret = stat("/test", &s);
     printf("statret = %d, type = %d, size = %d\n", statret, s.type, s.size);
+    int64_t rmdirret = rmdir("/test/");
+    printf("rmdirret = %d\n", rmdirret);
+    statret = stat("/license", &s);
+    printf("statret = %d, type = %d, size = %d\n", statret, s.type, s.size);
+    statret = stat("/hello", &s);
+    printf("statret = %d, type = %d, size = %d\n", statret, s.type, s.size);
+    statret = stat("/test", &s);
+    printf("statret = %d, type = %d, size = %d\n", statret, s.type, s.size);
+    rmdirret = rmdir("/");
+    printf("rmdirret = %d\n", rmdirret);
     return 0;
 }

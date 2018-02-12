@@ -39,4 +39,5 @@ uint64_t unlink(char* name);
 uint64_t readdir(char* name, struct dircontent* buf);
 uint64_t stat(char* name, struct stat* buf);
 uint64_t mkdir(char* name);
+uint64_t rmdir(char* name);
 uint64_t put(char s);
