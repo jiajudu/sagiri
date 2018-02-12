@@ -294,7 +294,7 @@ int64_t createfileindir(struct file* n, char* name){
         n->inode.addr[newindex] = pageno;
         setinode(n->inodenum, &(n->inode));
     }
-    uint64_t childnum = n->inode.size / 64;
+    uint64_t childnum = n->inode.size / 16;
     uint64_t blockno = childnum / 32;
     uint64_t blockoff = childnum % 32;
     n->inode.size += 16;
@@ -305,6 +305,36 @@ int64_t createfileindir(struct file* n, char* name){
     strncopy(d->name, name, 12);
     setblock(n->inode.addr[blockno], buf);
     return inodenum;
+}
+int64_t removefilefromdir(struct file* n, uint64_t inodenum){
+    if(n->inode.type != file_directory){
+        return -1;
+    }
+    uint64_t childnum = n->inode.size / 16;
+    for(uint64_t i = 0; i < 14; i++){
+        uint32_t blockaddr = n->inode.addr[i];
+        char block[512];
+        getblock(blockaddr, block);
+        for(uint64_t j = 0; j < 32; j++){
+            struct dirent* d = (struct dirent*)block + j;
+            if(d->inodenum == inodenum){
+                uint64_t lastpage = childnum / 32;
+                char lastblock[512];
+                getblock(n->inode.addr[lastpage], lastblock);
+                struct dirent* lastd = (struct dirent*)lastblock + (childnum % 32);
+                *d = *lastd;
+                setblock(blockaddr, block);
+                if(childnum % 32 == 1){
+                    freeblock(n->inode.addr[lastpage]);
+                }
+                n->inode.size -= 16;
+                setinode(n->inodenum, &(n->inode));
+                freeinode(inodenum);
+                return 0;
+            }
+        }
+    }
+    return -1;
 }
 void truncfile(uint64_t inodenum){
     struct inode node = getinode(inodenum);
@@ -330,6 +360,10 @@ void truncfile(uint64_t inodenum){
 }
 int64_t fileopen(char* name, uint64_t flags){
     int64_t ret = -1;
+    uint64_t len = strlen(name);
+    if(name[0] != '/' || len == 0 || name[len - 1] == '/'){
+        return -1;
+    }
     acquire(&fslock);
     uint64_t flag_read = flags & 1;
     uint64_t flag_write = (flags & 2) >> 1;
@@ -591,6 +625,61 @@ int64_t filewrite(uint64_t fdn, char* buf, uint64_t size){
     printf("write end size = %d\n", fd->fnode->inode.size);
     release(&fslock);
     return ret;
+}
+int64_t fileunlink(char* name){
+    uint64_t len = strlen(name);
+    if(name[0] != '/' || len == 0 || name[len - 1] == '/'){
+        return -1;
+    }
+    acquire(&fslock);
+    struct file* fn = getparentinode(name);
+    if(fn == 0){
+        release(&fslock);
+        return -1;
+    }
+    char namebuf[20];
+    uint64_t namestart = 0;
+    uint64_t ptr = 0;
+    while(name[ptr] != 0){
+        if(name[ptr] == '/'){
+            namestart = ptr + 1;
+        }
+        ptr++;
+    }
+    for(ptr = namestart; name[ptr] != 0; ptr++){
+        namebuf[ptr - namestart] = name[ptr];
+    }
+    namebuf[ptr - namestart] = 0;
+    int64_t inodenum = finditemindirectory(fn, namebuf);
+    if(inodenum < 0){
+        while(fn != 0){
+            fn->ref--;
+            struct file* pa = fn->parent;
+            if(fn->ref == 0){
+                freefile(fn);
+            }
+            fn = pa;
+        }
+        release(&fslock);
+        return -1;
+    }
+    struct file* f = getfileptrfromnum(inodenum);
+    if(f != 0){
+        while(fn != 0){
+            fn->ref--;
+            struct file* pa = fn->parent;
+            if(fn->ref == 0){
+                freefile(fn);
+            }
+            fn = pa;
+        }
+        release(&fslock);
+        return -1;
+    }
+    truncfile(inodenum);
+    removefilefromdir(fn, inodenum);
+    release(&fslock);
+    return 0;
 }
 void fsinit(){
     sb = readsuperblock();

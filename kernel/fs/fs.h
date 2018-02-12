@@ -24,3 +24,4 @@ int64_t fileopen(char* name, uint64_t flags);
 int64_t fileclose(uint64_t fdn);
 int64_t fileread(uint64_t fdn, char* buf, uint64_t size);
 int64_t filewrite(uint64_t fdn, char* buf, uint64_t size);
+int64_t fileunlink(char* name);

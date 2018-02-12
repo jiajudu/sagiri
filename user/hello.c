@@ -11,11 +11,9 @@ int64_t main(){
         }
     }
     close(fd);
-    fd = open("/license", 6);
-    for(uint64_t i = 0; i < 100; i++){
-        int64_t writeret = write(fd, "Hello World ", 12);
-    }
-    printf("write finish\n");
-    close(fd);
+    int64_t unlinkret = unlink("/license");
+    printf("unlinkret = %d\n", unlinkret);
+    fd = open("/license", 1);
+    printf("fd = %d\n", fd);
     return 0;
 }
