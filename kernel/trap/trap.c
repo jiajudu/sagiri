@@ -66,6 +66,16 @@ void interrupt(struct trapframe* tf){
             finishintr();
             break;
         }
+        case 13: {
+            if((tf->cs & 0x3) != 0){
+                printf("#GP killed\n");
+                cpu->thread->proc->killed = 1;
+            }else{
+                printtrapframe(tf);
+                panic("trap!");
+            }
+            break;
+        }
         default: {
             printtrapframe(tf);
             panic("trap!");

@@ -10,6 +10,13 @@ int64_t main(){
         }
         printf("in /: %s\n", con.c[i]);
     }
+    struct stat s;
+    int64_t statret = stat("/", &s);
+    printf("statret = %d, type = %d, size = %d\n", statret, s.type, s.size);
+    statret = stat("/license", &s);
+    printf("statret = %d, type = %d, size = %d\n", statret, s.type, s.size);
+    statret = stat("/hello", &s);
+    printf("statret = %d, type = %d, size = %d\n", statret, s.type, s.size);
     int64_t fd = open("/license", 1);
     char buf[100];
     int64_t readret = 100;
@@ -20,8 +27,6 @@ int64_t main(){
         }
     }
     close(fd);
-    int64_t unlinkret = unlink("/license");
-    printf("unlinkret = %d\n", unlinkret);
     fd = open("/license", 1);
     printf("fd = %d\n", fd);
     dirret = readdir("/", &con);

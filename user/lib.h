@@ -14,6 +14,10 @@ typedef int64_t bool;
 struct dircontent{
     char c[14 * 32][16];
 };
+struct stat{
+    uint64_t type;
+    uint64_t size;
+};
 void print(char* s);
 uint64_t exit(int64_t ret);
 uint64_t getpid();
@@ -33,4 +37,5 @@ uint64_t read(uint64_t fd, char* buf, uint64_t size);
 uint64_t write(uint64_t fd, char* buf, uint64_t size);
 uint64_t unlink(char* name);
 uint64_t readdir(char* name, struct dircontent* buf);
+uint64_t stat(char* name, struct stat* buf);
 uint64_t put(char s);

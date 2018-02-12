@@ -737,6 +737,62 @@ int64_t filereaddir(char* name, struct dircontent* buf){
     release(&fslock);
     return 0;
 }
+int64_t filestat(char* name, struct stat* buf){
+    uint64_t len = strlen(name);
+    if(name[0] != '/' || len == 0){
+        return -1;
+    }
+    acquire(&fslock);
+    struct file* fn = getparentinode(name);
+    if(fn == 0){
+        release(&fslock);
+        return -1;
+    }
+    if(name[len - 1] == '/'){
+        buf->size = fn->inode.size;
+        buf->type = fn->inode.type;
+    }else{
+        char namebuf[20];
+        uint64_t namestart = 0;
+        uint64_t ptr = 0;
+        while(name[ptr] != 0){
+            if(name[ptr] == '/'){
+                namestart = ptr + 1;
+            }
+            ptr++;
+        }
+        for(ptr = namestart; name[ptr] != 0; ptr++){
+            namebuf[ptr - namestart] = name[ptr];
+        }
+        namebuf[ptr - namestart] = 0;
+        int64_t inodenum = finditemindirectory(fn, namebuf);
+        if(inodenum < 0){
+            while(fn != 0){
+                fn->ref--;
+                struct file* pa = fn->parent;
+                if(fn->ref == 0){
+                    freefile(fn);
+                }
+                fn = pa;
+            }
+            release(&fslock);
+            return -1;
+        }
+        struct inode c = getinode(inodenum);
+        buf->size = c.size;
+        buf->type = c.type;
+    }
+    while(fn != 0){
+        fn->ref--;
+        struct file* pa = fn->parent;
+        if(fn->ref == 0){
+            freefile(fn);
+        }
+        fn = pa;
+    }
+    release(&fslock);
+    return 0;
+}
 void fsinit(){
     sb = readsuperblock();
     for(uint64_t i = 0; i < 512; i++){

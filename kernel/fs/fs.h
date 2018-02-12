@@ -19,6 +19,10 @@ struct dirent{
 struct dircontent{
     char c[14 * 32][16];
 };
+struct stat{
+    uint64_t type;
+    uint64_t size;
+};
 enum filetype{
     file_unused = 0, file_file = 1, file_directory = 2, file_symbollink = 3
 };
@@ -29,3 +33,4 @@ int64_t fileread(uint64_t fdn, char* buf, uint64_t size);
 int64_t filewrite(uint64_t fdn, char* buf, uint64_t size);
 int64_t fileunlink(char* name);
 int64_t filereaddir(char* name, struct dircontent* buf);
+int64_t filestat(char* name, struct stat* buf);

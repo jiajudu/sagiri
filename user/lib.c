@@ -51,8 +51,11 @@ uint64_t unlink(char* name){
 uint64_t readdir(char* name, struct dircontent* buf){
     return syscall(16, (uint64_t)name, (uint64_t)buf, 0, 0, 0);
 }
+uint64_t stat(char* name, struct stat* buf){
+    return syscall(17, (uint64_t)name, (uint64_t)buf, 0, 0, 0);
+}
 uint64_t put(char s){
-    return syscall(17, (uint64_t)s, 0, 0, 0, 0);
+    return syscall(18, (uint64_t)s, 0, 0, 0, 0);
 }
 static void printnum(int64_t num, uint64_t base){
     if(num < 0 && base == 10){
