@@ -241,7 +241,7 @@ struct file* getparentinode(char* name){
             for(uint64_t i = start; i < end; i++){
                 namebuf[i - start] = name[i];
             }
-            namebuf[end] = 0;
+            namebuf[end - start] = 0;
             uint64_t inodenum = finditemindirectory(cur, namebuf);
             if(inodenum == -1){
                 return 0;
@@ -678,6 +678,62 @@ int64_t fileunlink(char* name){
     }
     truncfile(inodenum);
     removefilefromdir(fn, inodenum);
+    while(fn != 0){
+        fn->ref--;
+        struct file* pa = fn->parent;
+        if(fn->ref == 0){
+            freefile(fn);
+        }
+        fn = pa;
+    }
+    release(&fslock);
+    return 0;
+}
+int64_t filereaddir(char* name, struct dircontent* buf){
+    uint64_t len = strlen(name);
+    if(name[0] != '/' || len == 0 || name[len - 1] != '/'){
+        return -1;
+    }
+    acquire(&fslock);
+    struct file* fn = getparentinode(name);
+    if(fn == 0){
+        release(&fslock);
+        return -1;
+    }
+    uint64_t childnum = fn->inode.size / 16;
+    uint64_t childptr = 0;
+    for(uint64_t i = 0; i < 14; i++){
+        uint32_t blockaddr = fn->inode.addr[i];
+        char block[512];
+        getblock(blockaddr, block);
+        for(uint64_t j = 0; j < 32; j++){
+            struct dirent* d = (struct dirent*)block + j;
+            strncopy(buf->c[childptr], d->name, 12);
+            buf->c[childptr][12] = 0;
+            childptr++;
+            if(childptr >= childnum && childptr < 14 * 32){
+                buf->c[childptr][0] = 0;
+                while(fn != 0){
+                    fn->ref--;
+                    struct file* pa = fn->parent;
+                    if(fn->ref == 0){
+                        freefile(fn);
+                    }
+                    fn = pa;
+                }
+                release(&fslock);
+                return 0;
+            }
+        }
+    }
+    while(fn != 0){
+        fn->ref--;
+        struct file* pa = fn->parent;
+        if(fn->ref == 0){
+            freefile(fn);
+        }
+        fn = pa;
+    }
     release(&fslock);
     return 0;
 }

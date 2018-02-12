@@ -11,6 +11,9 @@ typedef unsigned long uint64_t;
 #define false 0
 #define true 1
 typedef int64_t bool;
+struct dircontent{
+    char c[14 * 32][16];
+};
 void print(char* s);
 uint64_t exit(int64_t ret);
 uint64_t getpid();
@@ -29,4 +32,5 @@ uint64_t close(uint64_t fd);
 uint64_t read(uint64_t fd, char* buf, uint64_t size);
 uint64_t write(uint64_t fd, char* buf, uint64_t size);
 uint64_t unlink(char* name);
+uint64_t readdir(char* name, struct dircontent* buf);
 uint64_t put(char s);

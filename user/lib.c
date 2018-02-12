@@ -48,8 +48,11 @@ uint64_t write(uint64_t fd, char* buf, uint64_t size){
 uint64_t unlink(char* name){
     return syscall(15, (uint64_t)name, 0, 0, 0, 0);
 }
+uint64_t readdir(char* name, struct dircontent* buf){
+    return syscall(16, (uint64_t)name, (uint64_t)buf, 0, 0, 0);
+}
 uint64_t put(char s){
-    return syscall(16, (uint64_t)s, 0, 0, 0, 0);
+    return syscall(17, (uint64_t)s, 0, 0, 0, 0);
 }
 static void printnum(int64_t num, uint64_t base){
     if(num < 0 && base == 10){
