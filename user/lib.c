@@ -60,8 +60,11 @@ uint64_t mkdir(char* name){
 uint64_t rmdir(char* name){
     return syscall(19, (uint64_t)name, 0, 0, 0, 0);
 }
+uint64_t lseek(uint64_t fd, int64_t off, uint64_t base){
+    return syscall(20, fd, off, base, 0, 0);
+}
 uint64_t put(char s){
-    return syscall(20, (uint64_t)s, 0, 0, 0, 0);
+    return syscall(21, (uint64_t)s, 0, 0, 0, 0);
 }
 static void printnum(int64_t num, uint64_t base){
     if(num < 0 && base == 10){

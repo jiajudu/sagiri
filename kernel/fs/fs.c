@@ -930,6 +930,35 @@ int64_t filermdir(char* name){
     release(&fslock);
     return 0;
 }
+int64_t fileseek(uint64_t fdn, int64_t off, uint64_t base){
+    if(fdn >= 16 || base >= 3){
+        return -1;
+    }
+    acquire(&fslock);
+    struct filedescriptor* fd = cpu->thread->proc->pfdtable[fdn];
+    if(fd == 0){
+        release(&fslock);
+        return -1;
+    }
+    uint64_t size = fd->fnode->inode.size;
+    int64_t kbase = fd->off;
+    if(base == 0){
+        kbase = 0;
+    }
+    if(base == 2){
+        kbase = size;
+    }
+    int64_t newoff = off + kbase;
+    if(newoff < 0){
+        newoff = 0;
+    }
+    if(newoff > size){
+        newoff = size;
+    }
+    fd->off = newoff;
+    release(&fslock);
+    return fd->off;
+}
 void fsinit(){
     sb = readsuperblock();
     for(uint64_t i = 0; i < 512; i++){

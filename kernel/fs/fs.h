@@ -36,3 +36,4 @@ int64_t filereaddir(char* name, struct dircontent* buf);
 int64_t filestat(char* name, struct stat* buf);
 int64_t filemkdir(char* name);
 int64_t filermdir(char* name);
+int64_t fileseek(uint64_t fdn, int64_t off, uint64_t base);
