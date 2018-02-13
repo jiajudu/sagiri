@@ -6,6 +6,7 @@
 #include<debug/debug.h>
 #include<proc/cpu.h>
 #include<fs/fs.h>
+#include<lib/string.h>
 void sysenter();
 uint64_t sys_fork(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
     return fork();
@@ -58,15 +59,38 @@ uint64_t sys_sleep(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, u
     return 0;
 }
 uint64_t sys_open(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
-    return fileopen((char*)arg0, arg1);
+    char* name = (char*)arg0;
+    if(strncmp(name, ":console", 12) == 0){
+        return consoleopen(arg1);
+    }else{
+        return fileopen((char*)arg0, arg1);
+    }
 }
 uint64_t sys_close(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
+    if(arg0 >= 16){
+        return -1;
+    }
+    if(cpu->thread->proc->pfdtable[arg0] != 0 && cpu->thread->proc->pfdtable[arg0]->isconsole){
+        return consoleclose(arg0);
+    }
     return fileclose(arg0);
 }
 uint64_t sys_read(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
+    if(arg0 >= 16){
+        return -1;
+    }
+    if(cpu->thread->proc->pfdtable[arg0] != 0 && cpu->thread->proc->pfdtable[arg0]->isconsole){
+        return consoleread(arg0, (char*)arg1, arg2);
+    }
     return fileread(arg0, (char*)arg1, arg2);
 }
 uint64_t sys_write(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
+    if(arg0 >= 16){
+        return -1;
+    }
+    if(cpu->thread->proc->pfdtable[arg0] != 0 && cpu->thread->proc->pfdtable[arg0]->isconsole){
+        return consolewrite(arg0, (char*)arg1, arg2);
+    }
     return filewrite(arg0, (char*)arg1, arg2);
 }
 uint64_t sys_unlink(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
@@ -85,20 +109,18 @@ uint64_t sys_rmdir(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, u
     return filermdir((char*)arg0);
 }
 uint64_t sys_lseek(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
+    if(arg0 >= 16 || arg2 >= 3){
+        return -1;
+    }
     return fileseek(arg0, arg1, arg2);
 }
 uint64_t sys_exec(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
     return exec((char*)arg0, (uint64_t*)arg1);
 }
-uint64_t sys_put(uint64_t arg0, uint64_t arg1, uint64_t arg2, uint64_t arg3, uint64_t arg4){
-    consoleput(arg0);
-    return arg1;
-}
 uint64_t (*systable[32])(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t) = {
     sys_fork, sys_exit, sys_thread, sys_threadexit, sys_waitproc, sys_waitthread, sys_getpid, sys_gettid, sys_killproc, sys_killthread, sys_sleep,
     sys_open, sys_close, sys_read, sys_write, sys_unlink, sys_readdir, sys_stat, sys_mkdir, sys_rmdir, sys_lseek,
-    sys_exec,
-    sys_put
+    sys_exec
 };
 void syscall(struct syscallframe* sf){
     cpu->thread->sf = sf;

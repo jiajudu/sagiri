@@ -66,8 +66,8 @@ uint64_t lseek(uint64_t fd, int64_t off, uint64_t base){
 uint64_t exec(char* name, uint64_t* args){
     return syscall(21, (uint64_t)name, (uint64_t)args, 0, 0, 0);
 }
-uint64_t put(char s){
-    return syscall(22, (uint64_t)s, 0, 0, 0, 0);
+void put(char c){
+    write(0, &c, 1);
 }
 static void printnum(int64_t num, uint64_t base){
     if(num < 0 && base == 10){

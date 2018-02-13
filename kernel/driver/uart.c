@@ -2,6 +2,7 @@
 #include<lib/x64.h>
 #include<driver/ioapic.h>
 #include<lib/stdio.h>
+#include<dev/console.h>
 static uint64_t com1 = 0x3f8;
 static uint64_t uart;
 static void microdelay(int64_t us) {
@@ -43,7 +44,8 @@ void uartinit() {
     ioapicenable(4, 0);
 }
 void uartintr() {
-    printf("uart: ");
-    uartputc(uartgetc());
-    printf("\n");
+    char c = uartgetc();
+    if(c >= 0){
+        consolewritec(c);
+    }
 }

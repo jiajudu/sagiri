@@ -8,20 +8,6 @@
 #include<proc/cpu.h>
 #include<dev/console.h>
 struct superblock sb;
-struct file{
-    struct inode inode;
-    uint64_t inodenum;
-    uint64_t ref;
-    struct file* parent;
-};
-struct filedescriptor{
-    struct file* fnode;
-    uint64_t readable;
-    uint64_t writable;
-    uint64_t ref;
-    uint64_t off;
-    uint64_t used;
-};
 struct file ftable[512];
 struct filedescriptor fdtable[512];
 struct spinlock fslock;
@@ -455,6 +441,7 @@ int64_t fileopen(char* name, uint64_t flags){
     fd->readable = (flag_read ? 1: 0);
     fd->ref = 1;
     fd->writable = (flag_write ? 1: 0);
+    fd->isconsole = 0;
     cpu->thread->proc->pfdtable[ret] = fd;
     if(flag_trunc){
         truncfile(inodenum);
@@ -465,10 +452,6 @@ int64_t fileopen(char* name, uint64_t flags){
 }
 int64_t fileclose(uint64_t fdn){
     acquire(&fslock);
-    if(fdn >= 16){
-        release(&fslock);
-        return -1;
-    }
     struct filedescriptor* fd = cpu->thread->proc->pfdtable[fdn];
     if(fd == 0){
         release(&fslock);
@@ -555,9 +538,6 @@ int64_t addblock(struct file* f){
     return 0;
 }
 int64_t fileread(uint64_t fdn, char* buf, uint64_t size){
-    if(fdn >= 16){
-        return -1;
-    }
     int64_t ret = 0;
     acquire(&fslock);
     struct filedescriptor* fd = cpu->thread->proc->pfdtable[fdn];
@@ -585,9 +565,6 @@ int64_t fileread(uint64_t fdn, char* buf, uint64_t size){
     return ret;
 }
 int64_t filewrite(uint64_t fdn, char* buf, uint64_t size){
-    if(fdn >= 16){
-        return -1;
-    }
     int64_t ret = 0;
     acquire(&fslock);
     struct filedescriptor* fd = cpu->thread->proc->pfdtable[fdn];
@@ -931,9 +908,6 @@ int64_t filermdir(char* name){
     return 0;
 }
 int64_t fileseek(uint64_t fdn, int64_t off, uint64_t base){
-    if(fdn >= 16 || base >= 3){
-        return -1;
-    }
     acquire(&fslock);
     struct filedescriptor* fd = cpu->thread->proc->pfdtable[fdn];
     if(fd == 0){

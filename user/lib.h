@@ -42,4 +42,4 @@ uint64_t mkdir(char* name);
 uint64_t rmdir(char* name);
 uint64_t lseek(uint64_t fd, int64_t off, uint64_t base);
 uint64_t exec(char* name, uint64_t* args);
-uint64_t put(char s);
+void put(char c);

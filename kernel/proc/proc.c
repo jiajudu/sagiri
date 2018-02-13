@@ -476,17 +476,11 @@ int64_t exec(char* name, uint64_t* args){
     return 0;
 }
 uint64_t firstthread(){
-    char* arg0 = "/echo";
-    char* arg1 = "ksp";
-    char* arg2 = "bsesw";
-    char* arg3 = "/license";
-    uint64_t args[5];
+    char* arg0 = "/init";
+    uint64_t args[2];
     args[0] = (uint64_t)arg0;
-    args[1] = (uint64_t)arg1;
-    args[2] = (uint64_t)arg2;
-    args[3] = (uint64_t)arg3;
-    args[4] = 0;
-    exec("/echo", args);
+    args[1] = 0;
+    exec("/init", args);
     return 0;
 }
 void procinit(){

@@ -23,9 +23,25 @@ struct stat{
     uint64_t type;
     uint64_t size;
 };
+struct file{
+    struct inode inode;
+    uint64_t inodenum;
+    uint64_t ref;
+    struct file* parent;
+};
+struct filedescriptor{
+    struct file* fnode;
+    uint64_t readable;
+    uint64_t writable;
+    uint64_t ref;
+    uint64_t off;
+    uint64_t used;
+    uint64_t isconsole;
+};
 enum filetype{
     file_unused = 0, file_file = 1, file_directory = 2, file_symbollink = 3
 };
+extern struct spinlock fslock;
 void fsinit();
 int64_t fileopen(char* name, uint64_t flags);
 int64_t fileclose(uint64_t fdn);
@@ -37,3 +53,5 @@ int64_t filestat(char* name, struct stat* buf);
 int64_t filemkdir(char* name);
 int64_t filermdir(char* name);
 int64_t fileseek(uint64_t fdn, int64_t off, uint64_t base);
+struct filedescriptor* allocfiledescriptor();
+void freefiledescriptor(struct filedescriptor* fd);
