@@ -43,3 +43,5 @@ uint64_t rmdir(char* name);
 uint64_t lseek(uint64_t fd, int64_t off, uint64_t base);
 uint64_t exec(char* name, uint64_t* args);
 void put(char c);
+uint64_t strlen(char* p);
+void strncopy(char* t, char* f, uint64_t size);

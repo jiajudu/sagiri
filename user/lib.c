@@ -67,7 +67,7 @@ uint64_t exec(char* name, uint64_t* args){
     return syscall(21, (uint64_t)name, (uint64_t)args, 0, 0, 0);
 }
 void put(char c){
-    write(0, &c, 1);
+    write(1, &c, 1);
 }
 static void printnum(int64_t num, uint64_t base){
     if(num < 0 && base == 10){
@@ -123,4 +123,16 @@ void printf(char* fmt, ...){
         }
     }
 }
-
+uint64_t strlen(char* p){
+    uint64_t i = 0;
+    for(; p[i] != 0; i++);
+    return i;
+}
+void strncopy(char* t, char* f, uint64_t size){
+    for(uint64_t i = 0; i < size; i++){
+        t[i] = f[i];
+        if(t[i] == 0){
+            break;
+        }
+    }
+}

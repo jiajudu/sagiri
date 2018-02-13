@@ -114,6 +114,36 @@ void adddir(){
     d->name[4] = 0;
     d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
     dinode->size += 16;
+    filenode = addfile("uobj/sh.exe");
+    d = (struct dirent*)(content + 16 * 4);
+    strcpy(d->name, "sh");
+    d->name[2] = 0;
+    d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
+    dinode->size += 16;
+    filenode = addfile("uobj/cat.exe");
+    d = (struct dirent*)(content + 16 * 5);
+    strcpy(d->name, "cat");
+    d->name[3] = 0;
+    d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
+    dinode->size += 16;
+    filenode = addfile("uobj/ls.exe");
+    d = (struct dirent*)(content + 16 * 6);
+    strcpy(d->name, "ls");
+    d->name[2] = 0;
+    d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
+    dinode->size += 16;
+    filenode = addfile("uobj/mkdir.exe");
+    d = (struct dirent*)(content + 16 * 7);
+    strcpy(d->name, "mkdir");
+    d->name[5] = 0;
+    d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
+    dinode->size += 16;
+    filenode = addfile("uobj/rmdir.exe");
+    d = (struct dirent*)(content + 16 * 8);
+    strcpy(d->name, "rmdir");
+    d->name[5] = 0;
+    d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
+    dinode->size += 16;
 }
 int main(){
     writesuperblock();

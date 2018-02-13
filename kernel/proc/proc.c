@@ -160,6 +160,9 @@ int64_t fork(){
     int64_t ret = p->pid;
     for(uint64_t i = 0; i < 16; i++){
         p->pfdtable[i] = cpu->thread->proc->pfdtable[i];
+        if(p->pfdtable[i]){
+            p->pfdtable[i]->ref++;
+        }
     }
     release(&ptablelock);
     return ret;
@@ -402,7 +405,6 @@ void proctick(){
     release(&ptablelock);
 }
 int64_t exec(char* name, uint64_t* args){
-    printf("exec: %s\n", name);
     int64_t fd = fileopen(name, 1);
     if(fd < 0){
         return -1;

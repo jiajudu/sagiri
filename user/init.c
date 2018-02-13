@@ -1,15 +1,11 @@
 #include<lib.h>
 int64_t main(int64_t argc, char** argv){
-    int64_t fd = open(":console", 3);
-    printf("fd = %d\n", fd);
-    write(fd, "Hello World!\n", 14);
-    char buf[10];
-    for(uint64_t i = 0; i < 10; i++){
-        int64_t readret = 0;
-        while(readret == 0){
-            readret = read(fd, buf + i, 1);
-        }
-    }
-    write(fd, buf, 10);
+    int64_t stdin = open(":console", 1);
+    int64_t stdout = open(":console", 2);
+    printf("stdin = %d, stdout = %d\n", stdin, stdout);
+    uint64_t args[2];
+    args[0] = (uint64_t)"/sh";
+    args[1] = 0;
+    exec("/sh", args);
     return 0;
 }
