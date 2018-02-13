@@ -144,6 +144,18 @@ void adddir(){
     d->name[5] = 0;
     d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
     dinode->size += 16;
+    filenode = addfile("uobj/rm.exe");
+    d = (struct dirent*)(content + 16 * 9);
+    strcpy(d->name, "rm");
+    d->name[2] = 0;
+    d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
+    dinode->size += 16;
+    filenode = addfile("uobj/forktest.exe");
+    d = (struct dirent*)(content + 16 * 10);
+    strcpy(d->name, "forktest");
+    d->name[8] = 0;
+    d->inodenum = ((char*)filenode - data - 4 * 512) / 64;
+    dinode->size += 16;
 }
 int main(){
     writesuperblock();

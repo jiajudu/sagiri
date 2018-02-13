@@ -305,10 +305,10 @@ int64_t removefilefromdir(struct file* n, uint64_t inodenum){
         for(uint64_t j = 0; j < 32; j++){
             struct dirent* d = (struct dirent*)block + j;
             if(d->inodenum == inodenum){
-                uint64_t lastpage = childnum / 32;
+                uint64_t lastpage = (childnum - 1) / 32;
                 char lastblock[512];
                 getblock(n->inode.addr[lastpage], lastblock);
-                struct dirent* lastd = (struct dirent*)lastblock + (childnum % 32);
+                struct dirent* lastd = (struct dirent*)lastblock + ((childnum - 1) % 32);
                 *d = *lastd;
                 setblock(blockaddr, block);
                 if(childnum % 32 == 1){
